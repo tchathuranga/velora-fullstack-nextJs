@@ -1,0 +1,37 @@
+[
+  {
+    "id": "conv-1",
+    "buyerId": "buyer-1",
+    "buyerName": "Ayesha Perera",
+    "storeId": "store-1",
+    "storeName": "Urban Threads",
+    "messages": [
+      { "id": "m-1", "sender": "buyer", "text": "Hi! Does the crewneck tee run true to size?", "timestamp": "2025-09-10T09:12:00" },
+      { "id": "m-2", "sender": "seller", "text": "Hello Ayesha, yes it's true to size. Most customers order their usual size.", "timestamp": "2025-09-10T09:40:00" },
+      { "id": "m-3", "sender": "buyer", "text": "Great, thank you! Just placed an order.", "timestamp": "2025-09-10T09:45:00" },
+      { "id": "m-4", "sender": "seller", "text": "Thanks so much, we'll get it packed today!", "timestamp": "2025-09-10T09:50:00" }
+    ]
+  },
+  {
+    "id": "conv-2",
+    "buyerId": "buyer-1",
+    "buyerName": "Ayesha Perera",
+    "storeId": "store-2",
+    "storeName": "Gadget Hub",
+    "messages": [
+      { "id": "m-5", "sender": "buyer", "text": "Is the power bank compatible with iPhone fast charging?", "timestamp": "2025-09-05T14:02:00" },
+      { "id": "m-6", "sender": "seller", "text": "Yes, it supports 22.5W PD which works great with iPhones.", "timestamp": "2025-09-05T14:20:00" }
+    ]
+  },
+  {
+    "id": "conv-3",
+    "buyerId": "buyer-3",
+    "buyerName": "Chathuri Wijesinghe",
+    "storeId": "store-1",
+    "storeName": "Urban Threads",
+    "messages": [
+      { "id": "m-7", "sender": "buyer", "text": "Can I get the denim jacket in size S?", "timestamp": "2025-09-11T11:00:00" },
+      { "id": "m-8", "sender": "seller", "text": "Yes, size S is in stock. Would you like us to reserve one for you?", "timestamp": "2025-09-11T11:22:00" }
+    ]
+  }
+]

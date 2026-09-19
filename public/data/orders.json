@@ -1,0 +1,118 @@
+[
+  {
+    "id": "ORD-10234",
+    "buyerName": "Ayesha Perera",
+    "items": [
+      { "productId": "p-1", "title": "Classic Crewneck T-Shirt", "price": 1800, "quantity": 2, "icon": "Shirt", "storeId": "store-1" }
+    ],
+    "subtotal": 3600,
+    "deliveryCost": 350,
+    "total": 3950,
+    "paymentMethod": "cod",
+    "billing": {
+      "fullName": "Ayesha Perera",
+      "street": "22/4 Flower Road",
+      "city": "Colombo",
+      "province": "Western Province",
+      "phone1": "0771122334",
+      "phone2": "0112233445",
+      "zipCode": "00300"
+    },
+    "saveAddress": true,
+    "status": "delivered",
+    "createdAt": "2025-08-12",
+    "trackingSteps": [
+      { "label": "Order placed", "done": true, "date": "2025-08-12" },
+      { "label": "Handed to courier", "done": true, "date": "2025-08-13" },
+      { "label": "Out for delivery", "done": true, "date": "2025-08-15" },
+      { "label": "Delivered", "done": true, "date": "2025-08-15" }
+    ]
+  },
+  {
+    "id": "ORD-10298",
+    "buyerName": "Ayesha Perera",
+    "items": [
+      { "productId": "p-3", "title": "Wireless Earbuds Pro with ANC", "price": 8900, "quantity": 1, "icon": "Headphones", "storeId": "store-2" }
+    ],
+    "subtotal": 8900,
+    "deliveryCost": 400,
+    "total": 9300,
+    "paymentMethod": "bank_transfer",
+    "billing": {
+      "fullName": "Ayesha Perera",
+      "street": "22/4 Flower Road",
+      "city": "Colombo",
+      "province": "Western Province",
+      "phone1": "0771122334",
+      "phone2": "0112233445",
+      "zipCode": "00300"
+    },
+    "saveAddress": true,
+    "status": "shipped",
+    "createdAt": "2025-09-01",
+    "trackingSteps": [
+      { "label": "Order placed", "done": true, "date": "2025-09-01" },
+      { "label": "Payment confirmed", "done": true, "date": "2025-09-02" },
+      { "label": "Handed to courier", "done": true, "date": "2025-09-03" },
+      { "label": "Out for delivery", "done": false }
+    ]
+  },
+  {
+    "id": "ORD-10312",
+    "buyerName": "Ayesha Perera",
+    "items": [
+      { "productId": "p-9", "title": "Brightening Vitamin C Serum", "price": 2900, "quantity": 3, "icon": "Sparkles", "storeId": "store-5" }
+    ],
+    "subtotal": 8700,
+    "deliveryCost": 350,
+    "total": 9050,
+    "paymentMethod": "cod",
+    "billing": {
+      "fullName": "Ayesha Perera",
+      "street": "22/4 Flower Road",
+      "city": "Colombo",
+      "province": "Western Province",
+      "phone1": "0771122334",
+      "phone2": "0112233445",
+      "zipCode": "00300"
+    },
+    "saveAddress": true,
+    "status": "processing",
+    "createdAt": "2025-09-10",
+    "trackingSteps": [
+      { "label": "Order placed", "done": true, "date": "2025-09-10" },
+      { "label": "Handed to courier", "done": false },
+      { "label": "Out for delivery", "done": false },
+      { "label": "Delivered", "done": false }
+    ]
+  },
+  {
+    "id": "ORD-10355",
+    "buyerName": "Ayesha Perera",
+    "items": [
+      { "productId": "p-8", "title": "Everyday Canvas Backpack", "price": 4700, "quantity": 1, "icon": "Backpack", "storeId": "store-1" }
+    ],
+    "subtotal": 4700,
+    "deliveryCost": 350,
+    "total": 5050,
+    "paymentMethod": "cod",
+    "billing": {
+      "fullName": "Ayesha Perera",
+      "street": "22/4 Flower Road",
+      "city": "Colombo",
+      "province": "Western Province",
+      "phone1": "0771122334",
+      "phone2": "0112233445",
+      "zipCode": "00300"
+    },
+    "saveAddress": true,
+    "status": "delivered",
+    "createdAt": "2025-07-20",
+    "trackingSteps": [
+      { "label": "Order placed", "done": true, "date": "2025-07-20" },
+      { "label": "Handed to courier", "done": true, "date": "2025-07-21" },
+      { "label": "Out for delivery", "done": true, "date": "2025-07-23" },
+      { "label": "Delivered", "done": true, "date": "2025-07-23" }
+    ]
+  }
+]

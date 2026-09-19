@@ -1,0 +1,11 @@
+{
+  "siteContact": {
+    "email": "support@edeelz.lk",
+    "phone": "+94 11 234 5678",
+    "whatsapp": "+94 77 123 4567"
+  },
+  "adminBankAccounts": [
+    { "label": "Bank 1", "bankName": "Commercial Bank", "accountName": "EDEELZ.lk (Pvt) Ltd", "accountNumber": "8001234567", "branch": "Colombo 03" },
+    { "label": "Bank 2", "bankName": "Sampath Bank", "accountName": "EDEELZ.lk (Pvt) Ltd", "accountNumber": "1123456789", "branch": "Union Place" }
+  ]
+}

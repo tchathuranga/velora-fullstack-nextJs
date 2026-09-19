@@ -1,0 +1,8 @@
+[
+  { "id": "tx-1", "storeId": "store-1", "productTitle": "T shirt", "paymentMethod": "bank_transfer", "amount": 1000, "confirmed": true },
+  { "id": "tx-2", "storeId": "store-1", "productTitle": "Shirt", "paymentMethod": "bank_transfer", "amount": 500, "confirmed": true },
+  { "id": "tx-3", "storeId": "store-1", "productTitle": "Cap", "paymentMethod": "bank_transfer", "amount": 900, "confirmed": true },
+  { "id": "tx-4", "storeId": "store-1", "productTitle": "T shirt", "paymentMethod": "bank_transfer", "amount": 1000, "confirmed": false },
+  { "id": "tx-5", "storeId": "store-1", "productTitle": "Cap", "paymentMethod": "cod", "amount": 1000, "confirmed": true },
+  { "id": "tx-6", "storeId": "store-1", "productTitle": "T Shirt", "paymentMethod": "cod", "amount": 500, "confirmed": true }
+]

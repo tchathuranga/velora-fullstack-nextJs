@@ -1,0 +1,6 @@
+[
+  { "username": "ayesha", "password": "buyer123", "role": "buyer", "name": "Ayesha Perera", "buyerId": "buyer-1" },
+  { "username": "nimal", "password": "buyer123", "role": "buyer", "name": "Nimal Rajapaksa", "buyerId": "buyer-2" },
+  { "username": "nadeesha", "password": "seller123", "role": "seller", "name": "Nadeesha Perera", "storeSlug": "urban-threads" },
+  { "username": "kasun", "password": "seller123", "role": "seller", "name": "Kasun Silva", "storeSlug": "gadget-hub" }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "fb-1",
+    "productId": "p-1",
+    "buyerName": "Chathuri W.",
+    "rating": 5,
+    "comment": "Great quality fabric and true to size. Will buy again!",
+    "createdAt": "2025-08-20"
+  },
+  {
+    "id": "fb-2",
+    "productId": "p-1",
+    "buyerName": "Tharindu B.",
+    "rating": 4,
+    "comment": "Good t-shirt, delivery took a bit longer than expected.",
+    "createdAt": "2025-08-25"
+  },
+  {
+    "id": "fb-3",
+    "productId": "p-3",
+    "buyerName": "Ayesha P.",
+    "rating": 5,
+    "comment": "The noise cancellation is amazing for the price. Very happy.",
+    "createdAt": "2025-07-05"
+  },
+  {
+    "id": "fb-4",
+    "productId": "p-9",
+    "buyerName": "Nimal R.",
+    "rating": 4,
+    "comment": "Noticed brighter skin after two weeks of use.",
+    "createdAt": "2025-07-18"
+  }
+]

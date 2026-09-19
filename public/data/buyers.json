@@ -1,0 +1,54 @@
+[
+  {
+    "id": "buyer-1",
+    "name": "Ayesha Perera",
+    "email": "ayesha.perera@example.com",
+    "registered": true,
+    "status": "active",
+    "savedAddress": true,
+    "address": {
+      "fullName": "Ayesha Perera",
+      "street": "22/4 Flower Road",
+      "city": "Colombo",
+      "province": "Western Province",
+      "phone1": "0771122334",
+      "phone2": "0112233445",
+      "zipCode": "00300",
+      "email": "ayesha.perera@example.com"
+    }
+  },
+  {
+    "id": "buyer-2",
+    "name": "Nimal Rajapaksa",
+    "email": "nimal.r@example.com",
+    "registered": true,
+    "status": "active",
+    "savedAddress": false
+  },
+  {
+    "id": "buyer-3",
+    "name": "Chathuri Wijesinghe",
+    "email": "chathuri.w@example.com",
+    "registered": true,
+    "status": "limited",
+    "savedAddress": true,
+    "address": {
+      "fullName": "Chathuri Wijesinghe",
+      "street": "14 Lake Road",
+      "city": "Kandy",
+      "province": "Central Province",
+      "phone1": "0765544332",
+      "phone2": "0812233445",
+      "zipCode": "20000",
+      "email": "chathuri.w@example.com"
+    }
+  },
+  {
+    "id": "buyer-4",
+    "name": "Tharindu Bandara",
+    "email": "tharindu.b@example.com",
+    "registered": true,
+    "status": "active",
+    "savedAddress": false
+  }
+]
