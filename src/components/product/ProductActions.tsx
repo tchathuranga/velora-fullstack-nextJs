@@ -10,8 +10,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { formatCurrency } from "@/lib/utils";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { setJustAdded, setNote, setQuantity, updateSelected } from "@/store/uiSlice";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
+import { setJustAdded, setNote, setQuantity, updateSelected } from "@/Redux/slices/uiSlice";
 
 export function ProductActions({ product }: { product: Product }) {
   const { addToCart } = useCart();

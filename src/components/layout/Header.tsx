@@ -22,8 +22,8 @@ import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { setMobileOpen, setQuery } from "@/store/headerSlice";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
+import { setMobileOpen, setQuery } from "@/Redux/slices/headerSlice";
 
 export function Header() {
   const { role, logout: authLogout, displayName, storeSlug } = useAuth();

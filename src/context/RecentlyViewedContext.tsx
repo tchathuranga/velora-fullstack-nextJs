@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { addViewed as addViewedAction, hydrateRecentlyViewed } from "@/store/recentlyViewedSlice";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
+import { addViewed as addViewedAction, hydrateRecentlyViewed } from "@/Redux/slices/recentlyViewedSlice";
 
 interface RecentlyViewedContextValue {
   productIds: string[];

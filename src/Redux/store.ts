@@ -1,12 +1,12 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "@/store/authSlice";
-import cartReducer from "@/store/cartSlice";
-import wishlistReducer from "@/store/wishlistSlice";
-import recentlyViewedReducer from "@/store/recentlyViewedSlice";
-import headerReducer from "@/store/headerSlice";
-import checkoutReducer from "@/store/checkoutSlice";
-import productFormReducer from "@/store/productFormSlice";
-import uiReducer from "@/store/uiSlice";
+import authReducer from "@/Redux/slices/authSlice";
+import cartReducer from "@/Redux/slices/cartSlice";
+import wishlistReducer from "@/Redux/slices/wishlistSlice";
+import recentlyViewedReducer from "@/Redux/slices/recentlyViewedSlice";
+import headerReducer from "@/Redux/slices/headerSlice";
+import checkoutReducer from "@/Redux/slices/checkoutSlice";
+import productFormReducer from "@/Redux/slices/productFormSlice";
+import uiReducer from "@/Redux/slices/uiSlice";
 
 export function makeStore() {
   return configureStore({

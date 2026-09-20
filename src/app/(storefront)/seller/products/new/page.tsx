@@ -1,7 +1,7 @@
 "use client";
 
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { setCustomSpecs, setField, setStep, setSubmitted, setVariations, togglePaymentMethod } from "@/store/productFormSlice";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
+import { setCustomSpecs, setField, setStep, setSubmitted, setVariations, togglePaymentMethod } from "@/Redux/slices/productFormSlice";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/Input";

@@ -2,14 +2,14 @@
 
 import { createContext, useContext, useEffect, useMemo } from "react";
 import { Product } from "@/types";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
 import {
   addToCart as addToCartAction,
   clearCart as clearCartAction,
   hydrateCart,
   removeFromCart as removeFromCartAction,
   updateQuantity as updateQuantityAction,
-} from "@/store/cartSlice";
+} from "@/Redux/slices/cartSlice";
 
 export interface CartItem {
   productId: string;

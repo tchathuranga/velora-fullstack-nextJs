@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
 import {
   hydrateAuth,
   loginSuccess,
@@ -9,7 +9,7 @@ import {
   registerBuyer,
   setHydrated,
   type RegisteredUser,
-} from "@/store/authSlice";
+} from "@/Redux/slices/authSlice";
 import { findDemoUser, findDemoAdmin, type DemoUser } from "@/lib/data/users";
 import type { Role } from "@/types/auth";
 
