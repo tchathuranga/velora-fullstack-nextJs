@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo } from "react";
 import { Product } from "@/types";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
 import {
   addToCart as addToCartAction,
   CartItem,
@@ -10,7 +10,7 @@ import {
   hydrateCart,
   removeFromCart as removeFromCartAction,
   updateQuantity as updateQuantityAction,
-} from "@/store/cartSlice";
+} from "@/Redux/slices/cartSlice";
 
 export type { CartItem };
 

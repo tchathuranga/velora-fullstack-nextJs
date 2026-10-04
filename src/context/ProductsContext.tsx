@@ -3,8 +3,8 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 import { Product } from "@/types";
 import { fetchJson } from "@/lib/fetchJson";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { addUserProduct, hydrateUserProducts, setCatalog, setCatalogLoading } from "@/store/productsSlice";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
+import { addUserProduct, hydrateUserProducts, setCatalog, setCatalogLoading } from "@/Redux/slices/productsSlice";
 
 const STORAGE_KEY = "velora_user_products";
 

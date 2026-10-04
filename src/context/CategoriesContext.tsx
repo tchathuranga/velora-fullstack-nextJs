@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useRef } from "react";
 import { Category } from "@/types";
 import { fetchJson } from "@/lib/fetchJson";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
 import {
   addCategory as addCategoryAction,
   addSubcategory as addSubcategoryAction,
@@ -12,7 +12,7 @@ import {
   setCategories,
   updateCategory as updateCategoryAction,
   updateSubcategory as updateSubcategoryAction,
-} from "@/store/categoriesSlice";
+} from "@/Redux/slices/categoriesSlice";
 
 const STORAGE_KEY = "velora_categories";
 

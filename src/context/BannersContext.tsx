@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useRef } from "react";
 import { Banner } from "@/types";
 import { fetchJson } from "@/lib/fetchJson";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
 import {
   addBanner as addBannerAction,
   deleteBanner as deleteBannerAction,
@@ -11,7 +11,7 @@ import {
   setBanners,
   updateBanner as updateBannerAction,
   updateBannerImage as updateBannerImageAction,
-} from "@/store/bannersSlice";
+} from "@/Redux/slices/bannersSlice";
 
 const STORAGE_KEY = "velora_banners";
 

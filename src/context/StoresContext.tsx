@@ -3,8 +3,8 @@
 import { createContext, useContext, useEffect, useRef } from "react";
 import { SellerStatus, Store } from "@/types";
 import { fetchJson } from "@/lib/fetchJson";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { addStore as addStoreAction, setStores, updateStoreStatus as updateStoreStatusAction } from "@/store/storesSlice";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
+import { addStore as addStoreAction, setStores, updateStoreStatus as updateStoreStatusAction } from "@/Redux/slices/storesSlice";
 
 const STORAGE_KEY = "velora_stores";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
 import {
   resetProductForm,
   setCategory,
@@ -12,7 +12,7 @@ import {
   setSubmitted,
   setVariations,
   togglePaymentMethod,
-} from "@/store/productFormSlice";
+} from "@/Redux/slices/productFormSlice";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/Input";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Provider } from "react-redux";
-import { makeStore } from "@/store/store";
+import { makeStore } from "@/Redux/store";
 import { AuthProvider } from "./AuthContext";
 import { CartProvider } from "./CartContext";
 import { WishlistProvider } from "./WishlistContext";

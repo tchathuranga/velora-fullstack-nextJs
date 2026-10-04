@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { hydrateWishlist, toggleWishlist as toggleWishlistAction } from "@/store/wishlistSlice";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
+import { hydrateWishlist, toggleWishlist as toggleWishlistAction } from "@/Redux/slices/wishlistSlice";
 
 interface WishlistContextValue {
   productIds: string[];
