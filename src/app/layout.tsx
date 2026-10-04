@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EDEELZ.lk — Online Marketplace",
-  description: "Buy and sell online with EDEELZ.lk — Sri Lanka's marketplace for everyone.",
+  title: "won.lk — Online Marketplace",
+  description: "Buy and sell online with won.lk — Sri Lanka's marketplace for everyone.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

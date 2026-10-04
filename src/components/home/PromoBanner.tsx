@@ -15,7 +15,7 @@ export function PromoBanner() {
         </div>
       </div>
       <Link href="/sell">
-        <Button variant="accent">Start selling on EDEELZ.lk</Button>
+        <Button variant="accent">Start selling on won.lk</Button>
       </Link>
     </section>
   );

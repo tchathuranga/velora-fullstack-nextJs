@@ -1,9 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Store,
   Search,
   ShoppingCart,
   Heart,
@@ -16,9 +16,11 @@ import {
   MessageCircle,
   PackagePlus,
   Rocket,
+  ShieldCheck,
 } from "lucide-react";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Button } from "@/components/ui/Button";
+import { CategoryMenu } from "@/components/layout/CategoryMenu";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -26,7 +28,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setMobileOpen, setQuery } from "@/store/headerSlice";
 
 export function Header() {
-  const { role, logout: authLogout, displayName, storeSlug } = useAuth();
+  const { role, logout: authLogout, displayName, storeSlug, sellerStoreSlug } = useAuth();
   const { itemCount } = useCart();
   const { productIds } = useWishlist();
   const router = useRouter();
@@ -47,14 +49,13 @@ export function Header() {
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-white/95 backdrop-blur">
       <div className="container-page flex flex-wrap items-center gap-3 py-3">
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-primary)] text-white">
-            <Store size={18} />
-          </span>
-          <span className="text-xl font-bold text-slate-900">
-            EDEELZ<span className="text-[var(--color-primary)]">.lk</span>
-          </span>
+        <Link href="/" aria-label="won.lk home" className="flex shrink-0 items-center">
+          <Image src="/images/logo.png" alt="won.lk" width={2171} height={724} priority className="h-10 w-auto" />
         </Link>
+
+        <div className="hidden shrink-0 sm:block">
+          <CategoryMenu />
+        </div>
 
         <form onSubmit={onSearch} className="order-3 w-full sm:order-none sm:flex-1 sm:max-w-xl">
           <div className="relative">
@@ -129,10 +130,18 @@ export function Header() {
                       <DropdownLink href="/account/messages" icon={<MessageCircle size={16} />} onClick={close}>
                         Messages
                       </DropdownLink>
+                      {sellerStoreSlug && (
+                        <DropdownLink href="/sell/pending" icon={<ShieldCheck size={16} />} onClick={close}>
+                          Seller Account Status
+                        </DropdownLink>
+                      )}
                     </>
                   )}
                   {role === "seller" && (
                     <>
+                      <DropdownLink href="/sell/pending" icon={<ShieldCheck size={16} />} onClick={close}>
+                        Account Status
+                      </DropdownLink>
                       <DropdownLink href={`/store/${storeSlug}`} icon={<LayoutDashboard size={16} />} onClick={close}>
                         My Store
                       </DropdownLink>

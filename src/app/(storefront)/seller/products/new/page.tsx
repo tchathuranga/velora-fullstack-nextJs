@@ -1,11 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { setCustomSpecs, setField, setStep, setSubmitted, setVariations, togglePaymentMethod } from "@/store/productFormSlice";
+import {
+  resetProductForm,
+  setCategory,
+  setCustomSpecs,
+  setField,
+  setFreeDelivery,
+  setStep,
+  setSubmitted,
+  setVariations,
+  togglePaymentMethod,
+} from "@/store/productFormSlice";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
+import { Select } from "@/components/ui/Select";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Button } from "@/components/ui/Button";
 import { ProductPhotoGrid } from "@/components/seller/ProductPhotoGrid";
 import { CustomSpecsEditor } from "@/components/seller/CustomSpecsEditor";
@@ -13,14 +25,29 @@ import { VariationAttributeBuilder } from "@/components/seller/VariationAttribut
 import { VariationImageBuilder } from "@/components/seller/VariationImageBuilder";
 import { VariationSummaryTable } from "@/components/seller/VariationSummaryTable";
 import { useAuth } from "@/context/AuthContext";
-import { VariationAttribute, PaymentMethod } from "@/types";
+import { useProducts } from "@/context/ProductsContext";
+import { useCategories } from "@/context/CategoriesContext";
+import { useStores } from "@/context/StoresContext";
+import { getStoreBySlug } from "@/lib/data/stores";
+import { getCategoryById } from "@/lib/data/categories";
+import { fileToDataUrl } from "@/lib/image";
+import { VariationAttribute, PaymentMethod, Product } from "@/types";
+
+function slugify(title: string): string {
+  return title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "product";
+}
 
 export default function NewProductPage() {
   const { storeSlug } = useAuth();
+  const { addProduct } = useProducts();
+  const { categories } = useCategories();
+  const { stores } = useStores();
   const dispatch = useAppDispatch();
   const step = useAppSelector((state) => state.productForm.step);
   const submitted = useAppSelector((state) => state.productForm.submitted);
   const title = useAppSelector((state) => state.productForm.title);
+  const categoryId = useAppSelector((state) => state.productForm.categoryId);
+  const subcategoryId = useAppSelector((state) => state.productForm.subcategoryId);
   const price = useAppSelector((state) => state.productForm.price);
   const quantity = useAppSelector((state) => state.productForm.quantity);
   const brand = useAppSelector((state) => state.productForm.brand);
@@ -28,14 +55,69 @@ export default function NewProductPage() {
   const color = useAppSelector((state) => state.productForm.color);
   const packageInclude = useAppSelector((state) => state.productForm.packageInclude);
   const customSpecs = useAppSelector((state) => state.productForm.customSpecs);
+  const description = useAppSelector((state) => state.productForm.description);
   const handlingTime = useAppSelector((state) => state.productForm.handlingTime);
   const deliveryTime = useAppSelector((state) => state.productForm.deliveryTime);
+  const deliveryFee = useAppSelector((state) => state.productForm.deliveryFee);
+  const freeDelivery = useAppSelector((state) => state.productForm.freeDelivery);
   const paymentMethods = useAppSelector((state) => state.productForm.paymentMethods);
   const location = useAppSelector((state) => state.productForm.location);
   const variations = useAppSelector((state) => state.productForm.variations);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [descriptionError, setDescriptionError] = useState("");
+  const selectedCategory = getCategoryById(categories, categoryId);
 
   const togglePayment = (method: PaymentMethod) => {
     dispatch(togglePaymentMethod(method));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const plainDescription = description.replace(/<[^>]*>/g, "").trim();
+    if (!plainDescription) {
+      setDescriptionError("Please add a description.");
+      return;
+    }
+    setDescriptionError("");
+
+    const store = storeSlug ? getStoreBySlug(stores, storeSlug) : undefined;
+    const id = `p-${Date.now()}`;
+    const images = await Promise.all(photoFiles.map((file) => fileToDataUrl(file))).catch(() => []);
+
+    const newProduct: Product = {
+      id,
+      slug: `${slugify(title)}-${id.slice(2)}`,
+      title,
+      storeId: store?.id ?? "",
+      price: Number(price) || 0,
+      quantity: Number(quantity) || 0,
+      brand: brand || undefined,
+      size: size || undefined,
+      color: color || undefined,
+      packageInclude: packageInclude || undefined,
+      customSpecs,
+      description,
+      handlingTime,
+      deliveryTime,
+      freeDelivery,
+      deliveryFee: freeDelivery ? 0 : Number(deliveryFee) || 0,
+      paymentMethods,
+      location,
+      categoryId: categoryId || undefined,
+      subcategoryId: subcategoryId || undefined,
+      icon: "",
+      galleryCount: Math.max(images.length, 1),
+      images: images.length ? images : undefined,
+      tags: ["new"],
+      rating: 0,
+      reviewCount: 0,
+      createdAt: new Date().toISOString().slice(0, 10),
+      variations: variations ?? undefined,
+    };
+
+    addProduct(newProduct);
+    dispatch(setSubmitted(true));
   };
 
   if (step === "attributes") {
@@ -91,7 +173,13 @@ export default function NewProductPage() {
           <Link href={`/store/${storeSlug}`}>
             <Button>View my store</Button>
           </Link>
-          <Button variant="outline" onClick={() => dispatch(setSubmitted(false))}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              dispatch(resetProductForm());
+              setDescriptionError("");
+            }}
+          >
             List another product
           </Button>
         </div>
@@ -100,13 +188,7 @@ export default function NewProductPage() {
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        dispatch(setSubmitted(true));
-      }}
-      className="container-page max-w-3xl space-y-8 py-10"
-    >
+    <form onSubmit={handleSubmit} className="container-page max-w-3xl space-y-8 py-10">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">List a product</h1>
         <p className="mt-1 text-sm text-[var(--color-muted)]">Fill in the details buyers will see on your listing.</p>
@@ -124,7 +206,38 @@ export default function NewProductPage() {
           />
         </div>
 
-        <ProductPhotoGrid />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Select
+            label="Category"
+            required
+            value={categoryId}
+            onChange={(e) => dispatch(setCategory(e.target.value))}
+          >
+            <option value="">Select a category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            label="Subcategory"
+            value={subcategoryId}
+            disabled={!selectedCategory || selectedCategory.subcategories.length === 0}
+            onChange={(e) => dispatch(setField({ field: "subcategoryId", value: e.target.value }))}
+          >
+            <option value="">
+              {selectedCategory ? "Select a subcategory (optional)" : "Select a category first"}
+            </option>
+            {selectedCategory?.subcategories.map((sub) => (
+              <option key={sub.id} value={sub.id}>
+                {sub.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <ProductPhotoGrid onPhotosChange={setPhotoFiles} />
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Input
@@ -192,7 +305,16 @@ export default function NewProductPage() {
 
       <section className="card space-y-5 p-6">
         <h2 className="section-title">Description</h2>
-        <Textarea placeholder="Describe your product" required />
+        <RichTextEditor
+          placeholder="Describe your product... get creative with formatting, lists, and quotes"
+          required
+          error={descriptionError}
+          value={description}
+          onChange={(html) => {
+            dispatch(setField({ field: "description", value: html }));
+            if (descriptionError) setDescriptionError("");
+          }}
+        />
       </section>
 
       <section className="card space-y-5 p-6">
@@ -213,6 +335,27 @@ export default function NewProductPage() {
           value={deliveryTime}
           onChange={(e) => dispatch(setField({ field: "deliveryTime", value: e.target.value }))}
         />
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+          <input
+            type="checkbox"
+            checked={freeDelivery}
+            onChange={(e) => dispatch(setFreeDelivery(e.target.checked))}
+            className="h-4 w-4 accent-[var(--color-primary)]"
+          />
+          Free delivery
+        </label>
+        {!freeDelivery && (
+          <Input
+            label="Delivery fee (LKR)"
+            required
+            type="number"
+            min={0}
+            placeholder="e.g. 350"
+            hint="Charged once per product at checkout"
+            value={deliveryFee}
+            onChange={(e) => dispatch(setField({ field: "deliveryFee", value: e.target.value }))}
+          />
+        )}
       </section>
 
       <section className="card space-y-3 p-6">

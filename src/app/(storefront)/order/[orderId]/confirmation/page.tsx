@@ -117,7 +117,7 @@ export default function OrderConfirmationPage({
           <span className="font-bold text-slate-900">{formatCurrency(order.total)}</span>
         </div>
 
-        <p className="mt-6 text-sm text-slate-600">Thank you for choosing EDEELZ.lk!</p>
+        <p className="mt-6 text-sm text-slate-600">Thank you for choosing won.lk!</p>
 
         <div className="mt-6 flex justify-center gap-3">
           <Link href="/account">

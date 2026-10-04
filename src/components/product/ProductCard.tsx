@@ -22,6 +22,7 @@ export function ProductCard({ product }: { product: Product }) {
         <PlaceholderImage
           seed={product.id}
           icon={product.icon}
+          image={product.images?.[0]}
           label={product.title}
           className="h-full w-full transition-transform duration-300 group-hover:scale-105"
         />

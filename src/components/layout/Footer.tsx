@@ -1,18 +1,14 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Store, Mail, Phone, MessageCircle } from "lucide-react";
+import { Mail, Phone, MessageCircle } from "lucide-react";
 
 export function Footer() {
   return (
     <footer className="mt-16 border-t border-[var(--color-border)] bg-white">
       <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-white">
-              <Store size={16} />
-            </span>
-            <span className="text-lg font-bold text-slate-900">
-              EDEELZ<span className="text-[var(--color-primary)]">.lk</span>
-            </span>
+          <div className="mb-3">
+            <Image src="/images/logo.png" alt="won.lk" width={2171} height={724} className="h-10 w-auto" />
           </div>
           <p className="text-sm text-[var(--color-muted)]">
             Sri Lanka&apos;s online marketplace connecting buyers with independent sellers, island-wide.
@@ -51,7 +47,7 @@ export function Footer() {
       </div>
       <div className="border-t border-[var(--color-border)] py-4">
         <p className="container-page text-center text-xs text-[var(--color-muted)]">
-          © {new Date().getFullYear()} EDEELZ.lk. All rights reserved.
+          © {new Date().getFullYear()} won.lk. All rights reserved.
         </p>
       </div>
     </footer>

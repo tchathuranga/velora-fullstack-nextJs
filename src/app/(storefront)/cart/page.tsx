@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { useCart, MAX_CART_ITEMS } from "@/context/CartContext";
 import { CartItemRow } from "@/components/cart/CartItemRow";
-import { CartSummary } from "@/components/cart/CartSummary";
+import { CartSummary, calculateDeliveryCost } from "@/components/cart/CartSummary";
 import { Button } from "@/components/ui/Button";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { fetchJson } from "@/lib/fetchJson";
@@ -50,7 +50,7 @@ export default function CartPage() {
             ))}
           </div>
           <div>
-            <CartSummary subtotal={subtotal} itemCount={itemCount} />
+            <CartSummary subtotal={subtotal} itemCount={itemCount} deliveryCost={calculateDeliveryCost(items)} />
             <p className="mt-3 text-center text-xs text-[var(--color-muted)]">
               {itemCount} / {MAX_CART_ITEMS} items in cart (maximum {MAX_CART_ITEMS} items can add to cart)
             </p>

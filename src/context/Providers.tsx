@@ -7,6 +7,10 @@ import { AuthProvider } from "./AuthContext";
 import { CartProvider } from "./CartContext";
 import { WishlistProvider } from "./WishlistContext";
 import { RecentlyViewedProvider } from "./RecentlyViewedContext";
+import { ProductsProvider } from "./ProductsContext";
+import { CategoriesProvider } from "./CategoriesContext";
+import { StoresProvider } from "./StoresContext";
+import { BannersProvider } from "./BannersContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Created once per app mount (not at module scope) via useState's lazy initializer, so
@@ -17,11 +21,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <Provider store={store}>
       <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <RecentlyViewedProvider>{children}</RecentlyViewedProvider>
-          </WishlistProvider>
-        </CartProvider>
+        <StoresProvider>
+          <CategoriesProvider>
+            <BannersProvider>
+              <ProductsProvider>
+                <CartProvider>
+                  <WishlistProvider>
+                    <RecentlyViewedProvider>{children}</RecentlyViewedProvider>
+                  </WishlistProvider>
+                </CartProvider>
+              </ProductsProvider>
+            </BannersProvider>
+          </CategoriesProvider>
+        </StoresProvider>
       </AuthProvider>
     </Provider>
   );

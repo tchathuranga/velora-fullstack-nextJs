@@ -6,7 +6,7 @@ const perks = [
   {
     icon: TrendingUp,
     title: "Reach thousands of buyers",
-    description: "Get discovered on EDEELZ.lk's homepage, search and category pages.",
+    description: "Get discovered on won.lk's homepage, search and category pages.",
   },
   {
     icon: Wallet,
@@ -29,7 +29,7 @@ export default function SellLandingPage() {
         </span>
         <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">Create your own store</h1>
         <p className="mt-3 text-base text-[var(--color-muted)]">
-          Join EDEELZ.lk as a seller and start listing your products to buyers across Sri Lanka —
+          Join won.lk as a seller and start listing your products to buyers across Sri Lanka —
           setup takes less than 10 minutes.
         </p>
         <Link href="/signup?next=/sell/register" className="mt-8 inline-block">

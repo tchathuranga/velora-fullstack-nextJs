@@ -6,6 +6,10 @@ import recentlyViewedReducer from "@/store/recentlyViewedSlice";
 import headerReducer from "@/store/headerSlice";
 import checkoutReducer from "@/store/checkoutSlice";
 import productFormReducer from "@/store/productFormSlice";
+import productsReducer from "@/store/productsSlice";
+import categoriesReducer from "@/store/categoriesSlice";
+import storesReducer from "@/store/storesSlice";
+import bannersReducer from "@/store/bannersSlice";
 import uiReducer from "@/store/uiSlice";
 
 export function makeStore() {
@@ -18,6 +22,10 @@ export function makeStore() {
       header: headerReducer,
       checkout: checkoutReducer,
       productForm: productFormReducer,
+      products: productsReducer,
+      categories: categoriesReducer,
+      stores: storesReducer,
+      banners: bannersReducer,
       ui: uiReducer,
     },
   });

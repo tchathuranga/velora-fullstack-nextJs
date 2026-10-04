@@ -3,7 +3,7 @@
     "id": "ORD-10234",
     "buyerName": "Ayesha Perera",
     "items": [
-      { "productId": "p-1", "title": "Classic Crewneck T-Shirt", "price": 1800, "quantity": 2, "icon": "Shirt", "storeId": "store-1" }
+      { "productId": "p-1", "title": "Classic Crewneck T-Shirt", "price": 1800, "quantity": 2, "icon": "Shirt", "storeId": "store-1", "variation": { "Color": "Blue", "Size": "Medium" } }
     ],
     "subtotal": 3600,
     "deliveryCost": 350,
@@ -90,7 +90,7 @@
     "id": "ORD-10355",
     "buyerName": "Ayesha Perera",
     "items": [
-      { "productId": "p-8", "title": "Everyday Canvas Backpack", "price": 4700, "quantity": 1, "icon": "Backpack", "storeId": "store-1" }
+      { "productId": "p-8", "title": "Everyday Canvas Backpack", "price": 4700, "quantity": 1, "icon": "Backpack", "storeId": "store-1", "variation": { "Color": "Black" } }
     ],
     "subtotal": 4700,
     "deliveryCost": 350,

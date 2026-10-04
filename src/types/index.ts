@@ -54,6 +54,27 @@ export interface SpecEntry {
   value: string;
 }
 
+export interface Subcategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  subcategories: Subcategory[];
+}
+
+export interface Banner {
+  id: string;
+  title: string;
+  subtitle: string;
+  /** Admin-uploaded image data URL; falls back to a gradient placeholder when absent. */
+  imageUrl?: string;
+}
+
 export interface VariationAttribute {
   name: string;
   options: string[];
@@ -87,10 +108,17 @@ export interface Product {
   description: string;
   handlingTime: string;
   deliveryTime: string;
+  /** Delivery fee in LKR; ignored when freeDelivery is true. Absent on legacy products. */
+  deliveryFee?: number;
+  freeDelivery?: boolean;
   paymentMethods: PaymentMethod[];
   location: string;
+  categoryId?: string;
+  subcategoryId?: string;
   icon: string;
   galleryCount: number;
+  /** Actual uploaded photo data URLs (seller-listed products only); falls back to the icon placeholder when absent. */
+  images?: string[];
   tags: Array<"trending" | "new" | "deal" | "sale" | "recent">;
   rating: number;
   reviewCount: number;
@@ -105,6 +133,8 @@ export interface OrderItem {
   quantity: number;
   icon: string;
   storeId: string;
+  /** Attribute selections made by the buyer, e.g. { Color: "Blue", Size: "Medium" }. */
+  variation?: Record<string, string>;
 }
 
 export type OrderStatus = "processing" | "shipped" | "delivered";
@@ -141,6 +171,7 @@ export interface SellerTransaction {
   paymentMethod: PaymentMethod;
   amount: number;
   confirmed: boolean;
+  createdAt: string;
 }
 
 export interface Message {

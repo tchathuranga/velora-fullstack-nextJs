@@ -23,13 +23,18 @@ const options: { value: PaymentMethod; title: string; description: string; icon:
 export function PaymentMethodSelector({
   value,
   onChange,
+  allowed,
 }: {
   value: PaymentMethod;
   onChange: (value: PaymentMethod) => void;
+  /** Restrict the choices to these methods (e.g. the ones every item in the cart accepts). Defaults to all. */
+  allowed?: PaymentMethod[];
 }) {
+  const visibleOptions = allowed ? options.filter((option) => allowed.includes(option.value)) : options;
+
   return (
     <div className="space-y-3">
-      {options.map((option) => {
+      {visibleOptions.map((option) => {
         const Icon = option.icon;
         const active = value === option.value;
         return (

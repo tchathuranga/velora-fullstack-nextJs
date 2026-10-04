@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { User, LogIn } from "lucide-react";
+import { User, LogIn, Store } from "lucide-react";
 import { getBuyerById } from "@/lib/data/buyers";
 import { fetchJson } from "@/lib/fetchJson";
 import { useAuth } from "@/context/AuthContext";
@@ -14,7 +14,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { Buyer, Order, Product } from "@/types";
 
 export default function AccountPage() {
-  const { role, buyerId, displayName, username } = useAuth();
+  const { role, buyerId, displayName, username, sellerStoreSlug, getAddress, saveAddress } = useAuth();
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -53,15 +53,16 @@ export default function AccountPage() {
   const buyer = buyerId ? getBuyerById(buyers, buyerId) : undefined;
   const name = buyer?.name ?? displayName;
   const email = buyer?.email ?? (username ? `${username}@example.com` : "");
-  const address = buyer?.address ?? {
-    fullName: name,
-    street: "",
-    city: "",
-    province: "",
-    phone1: "",
-    phone2: "",
-    zipCode: "",
-  };
+  const address = (username ? getAddress(username) : undefined) ??
+    buyer?.address ?? {
+      fullName: name,
+      street: "",
+      city: "",
+      province: "",
+      phone1: "",
+      phone2: "",
+      zipCode: "",
+    };
 
   return (
     <div className="container-page py-8">
@@ -78,8 +79,29 @@ export default function AccountPage() {
         </div>
       </div>
 
+      {sellerStoreSlug && (
+        <div className="mt-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-slate-50 p-5 sm:flex-row sm:items-center">
+          <div>
+            <p className="font-medium text-slate-900">You&apos;ve applied to become a seller</p>
+            <p className="text-sm text-[var(--color-muted)]">Check whether your store has been approved yet.</p>
+          </div>
+          <Link href="/sell/pending">
+            <Button variant="secondary">
+              <Store size={16} />
+              View seller account status
+            </Button>
+          </Link>
+        </div>
+      )}
+
       <div className="mt-6">
-        <DeliveryAddressCard key={buyerId ?? username ?? "guest"} address={address} />
+        <DeliveryAddressCard
+          key={buyerId ?? username ?? "guest"}
+          address={address}
+          onSave={(next) => {
+            if (username) saveAddress(username, next);
+          }}
+        />
       </div>
 
       <section className="mt-6 card p-5">

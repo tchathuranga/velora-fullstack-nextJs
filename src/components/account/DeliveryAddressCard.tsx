@@ -7,14 +7,19 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
-export function DeliveryAddressCard({ address: initial }: { address: Address }) {
-  const [address, setAddress] = useState(initial);
-  const [draft, setDraft] = useState(initial);
+export function DeliveryAddressCard({
+  address,
+  onSave,
+}: {
+  address: Address;
+  onSave: (address: Address) => void;
+}) {
+  const [draft, setDraft] = useState(address);
   const [open, setOpen] = useState(false);
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
-    setAddress(draft);
+    onSave(draft);
     setOpen(false);
   };
 
@@ -39,7 +44,7 @@ export function DeliveryAddressCard({ address: initial }: { address: Address }) 
           <p>
             {address.fullName} · {address.street}, {address.city}, {address.province} {address.zipCode}
             <br />
-            {address.phone1} / {address.phone2}
+            {[address.phone1, address.phone2].filter(Boolean).join(" / ")}
           </p>
         ) : (
           <p className="text-[var(--color-muted)]">
@@ -57,8 +62,20 @@ export function DeliveryAddressCard({ address: initial }: { address: Address }) 
             <Input label="Province" required value={draft.province} onChange={(e) => setDraft({ ...draft, province: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Phone 1" required value={draft.phone1} onChange={(e) => setDraft({ ...draft, phone1: e.target.value })} />
-            <Input label="Phone 2" required value={draft.phone2} onChange={(e) => setDraft({ ...draft, phone2: e.target.value })} />
+            <Input
+              label="Phone 1"
+              type="tel"
+              required
+              value={draft.phone1}
+              onChange={(e) => setDraft({ ...draft, phone1: e.target.value })}
+            />
+            <Input
+              label="Phone 2"
+              type="tel"
+              hint="Optional"
+              value={draft.phone2}
+              onChange={(e) => setDraft({ ...draft, phone2: e.target.value })}
+            />
           </div>
           <Input label="Zip code" required value={draft.zipCode} onChange={(e) => setDraft({ ...draft, zipCode: e.target.value })} />
           <Button type="submit" fullWidth>

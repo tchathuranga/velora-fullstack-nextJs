@@ -7,11 +7,13 @@ import { LogIn, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/context/AuthContext";
+import { useStores } from "@/context/StoresContext";
 import { fetchJson } from "@/lib/fetchJson";
 import type { DemoUser } from "@/lib/data/users";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { stores } = useStores();
   const router = useRouter();
   const [users, setUsers] = useState<DemoUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -55,7 +57,7 @@ export default function LoginPage() {
       return;
     }
 
-    const user = login(users, identifier, password);
+    const user = login(users, identifier, password, stores);
     if (!user) {
       setError("Invalid username or password. Please check your credentials and try again.");
       return;
@@ -71,7 +73,7 @@ export default function LoginPage() {
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary)]">
             <LogIn size={22} />
           </span>
-          <h1 className="text-xl font-semibold text-slate-900">Log in to EDEELZ.lk</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Log in to won.lk</h1>
           <p className="mt-1 text-sm text-[var(--color-muted)]">
             Sign in to continue shopping and manage your account.
           </p>
@@ -133,11 +135,7 @@ export default function LoginPage() {
             Become a seller
           </Link>
         </p>
-        <p className="mt-4 text-center text-xs text-[var(--color-muted-foreground)]">
-          <Link href="/admin/login" className="hover:text-[var(--color-muted)] hover:underline">
-            Admin sign-in
-          </Link>
-        </p>
+         
       </div>
     </div>
   );

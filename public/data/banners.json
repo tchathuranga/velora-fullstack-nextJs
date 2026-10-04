@@ -1,0 +1,22 @@
+[
+  {
+    "id": "banner-1",
+    "title": "Fashion edit",
+    "subtitle": "New season styles for everyone"
+  },
+  {
+    "id": "banner-2",
+    "title": "Tech essentials",
+    "subtitle": "Gadgets and accessories you'll actually use"
+  },
+  {
+    "id": "banner-3",
+    "title": "Home & living",
+    "subtitle": "Refresh your space for less"
+  },
+  {
+    "id": "banner-4",
+    "title": "Beauty picks",
+    "subtitle": "Skincare and makeup favorites"
+  }
+]

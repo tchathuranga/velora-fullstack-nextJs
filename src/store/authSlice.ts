@@ -1,11 +1,20 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Role } from "@/types/auth";
+import { Address } from "@/types";
 
 export interface RegisteredUser {
   username: string;
   email: string;
   password: string;
   name: string;
+}
+
+export interface RegisteredSeller {
+  username: string;
+  email: string;
+  password: string;
+  name: string;
+  storeSlug: string;
 }
 
 interface AuthState {
@@ -16,6 +25,9 @@ interface AuthState {
   storeSlug: string | null;
   buyerId: string | null;
   registeredUser: RegisteredUser | null;
+  registeredSeller: RegisteredSeller | null;
+  /** Saved delivery addresses, keyed by username — part of each account's own data. */
+  addressesByUsername: Record<string, Address>;
 }
 
 const STORAGE_KEY = "velora_auth";
@@ -28,6 +40,8 @@ const initialState: AuthState = {
   storeSlug: null,
   buyerId: null,
   registeredUser: null,
+  registeredSeller: null,
+  addressesByUsername: {},
 };
 
 const persistAuth = (state: AuthState) => {
@@ -51,6 +65,8 @@ const authSlice = createSlice({
       state.storeSlug = payload.storeSlug ?? null;
       state.buyerId = payload.buyerId ?? null;
       state.registeredUser = payload.registeredUser ?? null;
+      state.registeredSeller = payload.registeredSeller ?? null;
+      state.addressesByUsername = payload.addressesByUsername ?? {};
     },
     setHydrated: (state) => {
       state.hydrated = true;
@@ -72,6 +88,7 @@ const authSlice = createSlice({
         storeSlug?: string | null;
         buyerId?: string | null;
         registeredUser?: RegisteredUser | null;
+        registeredSeller?: RegisteredSeller | null;
       }>,
     ) => {
       const {
@@ -81,6 +98,7 @@ const authSlice = createSlice({
         storeSlug = null,
         buyerId = null,
         registeredUser = state.registeredUser,
+        registeredSeller = state.registeredSeller,
       } = action.payload;
       state.role = role;
       state.username = username;
@@ -88,6 +106,7 @@ const authSlice = createSlice({
       state.storeSlug = storeSlug;
       state.buyerId = buyerId;
       state.registeredUser = registeredUser;
+      state.registeredSeller = registeredSeller;
       persistAuth(state);
     },
     logout: (state) => {
@@ -108,8 +127,23 @@ const authSlice = createSlice({
       state.registeredUser = user;
       persistAuth(state);
     },
+    registerSeller: (state, action: PayloadAction<RegisteredSeller>) => {
+      const seller = action.payload;
+      state.role = "seller";
+      state.username = seller.username;
+      state.signupName = seller.name;
+      state.storeSlug = seller.storeSlug;
+      state.buyerId = null;
+      state.registeredSeller = seller;
+      persistAuth(state);
+    },
+    saveAddress: (state, action: PayloadAction<{ username: string; address: Address }>) => {
+      state.addressesByUsername[action.payload.username] = action.payload.address;
+      persistAuth(state);
+    },
   },
 });
 
-export const { hydrateAuth, setHydrated, setGuest, loginSuccess, logout, registerBuyer } = authSlice.actions;
+export const { hydrateAuth, setHydrated, setGuest, loginSuccess, logout, registerBuyer, registerSeller, saveAddress } =
+  authSlice.actions;
 export default authSlice.reducer;

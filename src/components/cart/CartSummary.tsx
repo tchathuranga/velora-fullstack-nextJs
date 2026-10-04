@@ -4,8 +4,20 @@ import { formatCurrency } from "@/lib/utils";
 
 export const FLAT_DELIVERY_COST = 350;
 
-export function CartSummary({ subtotal, itemCount }: { subtotal: number; itemCount: number }) {
-  const deliveryCost = itemCount > 0 ? FLAT_DELIVERY_COST : 0;
+/** Sum of each product's own delivery fee (charged once per product); legacy items fall back to the flat rate. */
+export function calculateDeliveryCost(items: Array<{ deliveryFee?: number }>): number {
+  return items.reduce((sum, item) => sum + (item.deliveryFee ?? FLAT_DELIVERY_COST), 0);
+}
+
+export function CartSummary({
+  subtotal,
+  itemCount,
+  deliveryCost,
+}: {
+  subtotal: number;
+  itemCount: number;
+  deliveryCost: number;
+}) {
   const total = subtotal + deliveryCost;
 
   return (
@@ -18,7 +30,7 @@ export function CartSummary({ subtotal, itemCount }: { subtotal: number; itemCou
         </div>
         <div className="flex justify-between">
           <dt className="text-[var(--color-muted)]">Delivery cost</dt>
-          <dd className="font-medium text-slate-800">{formatCurrency(deliveryCost)}</dd>
+          <dd className="font-medium text-slate-800">{deliveryCost === 0 && itemCount > 0 ? "Free" : formatCurrency(deliveryCost)}</dd>
         </div>
         <div className="flex justify-between border-t border-[var(--color-border)] pt-2 text-base">
           <dt className="font-semibold text-slate-900">Total</dt>

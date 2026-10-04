@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { Product } from "@/types";
+import { PaymentMethod, Product } from "@/types";
 
 export interface CartItem {
   productId: string;
@@ -8,6 +8,10 @@ export interface CartItem {
   quantity: number;
   icon: string;
   storeId: string;
+  /** The payment methods this product's seller accepts, snapshotted at add-to-cart time. */
+  paymentMethods: PaymentMethod[];
+  /** Delivery fee snapshotted at add-to-cart time (0 = free). Absent on carts saved before this field existed. */
+  deliveryFee?: number;
 }
 
 interface CartState {
@@ -49,6 +53,8 @@ const cartSlice = createSlice({
           quantity,
           icon: product.icon,
           storeId: product.storeId,
+          paymentMethods: product.paymentMethods,
+          deliveryFee: product.freeDelivery ? 0 : product.deliveryFee,
         });
       }
 

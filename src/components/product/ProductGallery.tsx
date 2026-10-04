@@ -9,11 +9,13 @@ export function ProductGallery({
   icon,
   count,
   title,
+  images,
 }: {
   productId: string;
   icon: string;
   count: number;
   title: string;
+  images?: string[];
 }) {
   const [active, setActive] = useState(0);
   const thumbs = Array.from({ length: Math.max(count, 1) });
@@ -24,6 +26,7 @@ export function ProductGallery({
         <PlaceholderImage
           seed={`${productId}-${active}`}
           icon={icon}
+          image={images?.[active]}
           label={title}
           className="h-full w-full"
         />
@@ -40,7 +43,7 @@ export function ProductGallery({
               active === i ? "border-[var(--color-primary)]" : "border-transparent",
             )}
           >
-            <PlaceholderImage seed={`${productId}-${i}`} icon={icon} className="h-full w-full" />
+            <PlaceholderImage seed={`${productId}-${i}`} icon={icon} image={images?.[i]} className="h-full w-full" />
           </button>
         ))}
       </div>

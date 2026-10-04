@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Flame, Sparkles, Tag, PercentCircle } from "lucide-react";
+import { Flame, Sparkles, Tag, PercentCircle, Layers } from "lucide-react";
 
 const banners = [
   {
@@ -30,11 +30,18 @@ const banners = [
     icon: PercentCircle,
     className: "from-emerald-600 to-teal-600",
   },
+  {
+    href: "/search",
+    title: "Collections",
+    subtitle: "Browse every product on won.lk",
+    icon: Layers,
+    className: "from-fuchsia-600 to-pink-600",
+  },
 ];
 
 export function HeroBanners() {
   return (
-    <section className="grid grid-cols-1 gap-4 py-6 sm:grid-cols-2 lg:grid-cols-4">
+    <section className="grid grid-cols-1 gap-4 py-6 sm:grid-cols-2 lg:grid-cols-5">
       {banners.map((banner) => {
         const Icon = banner.icon;
         return (

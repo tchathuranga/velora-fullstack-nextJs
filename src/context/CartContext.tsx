@@ -5,20 +5,14 @@ import { Product } from "@/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   addToCart as addToCartAction,
+  CartItem,
   clearCart as clearCartAction,
   hydrateCart,
   removeFromCart as removeFromCartAction,
   updateQuantity as updateQuantityAction,
 } from "@/store/cartSlice";
 
-export interface CartItem {
-  productId: string;
-  title: string;
-  price: number;
-  quantity: number;
-  icon: string;
-  storeId: string;
-}
+export type { CartItem };
 
 interface CartContextValue {
   items: CartItem[];

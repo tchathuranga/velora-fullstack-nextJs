@@ -1,36 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { fetchJson } from "@/lib/fetchJson";
-import { Store, SellerStatus } from "@/types";
+import { useState } from "react";
+import { useStores } from "@/context/StoresContext";
+import { SellerStatus } from "@/types";
 import { SellerList } from "@/components/admin/SellerList";
 import { SellerDetailsPanel } from "@/components/admin/SellerDetailsPanel";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { PageLoader } from "@/components/ui/PageLoader";
 
 export default function AdminSellersPage() {
-  const [stores, setStores] = useState<Store[]>([]);
-  const [activeId, setActiveId] = useState<string>("");
-  const [statuses, setStatuses] = useState<Record<string, SellerStatus>>({});
-  const [loading, setLoading] = useState(true);
+  const { stores, loading, updateStoreStatus } = useStores();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchJson<Store[]>("/data/stores.json")
-      .then((data) => {
-        setStores(data);
-        setActiveId(data[0]?.id ?? "");
-        setStatuses(Object.fromEntries(data.map((s) => [s.id, s.status])));
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const [tableQuery, setTableQuery] = useState("");
 
   if (loading) return <PageLoader />;
 
-  const activeStore = stores.find((s) => s.id === activeId) ?? null;
+  const tq = tableQuery.trim().toLowerCase();
+  const filteredStores = tq ? stores.filter((s) => s.storeName.toLowerCase().includes(tq)) : stores;
+
+  const activeStore = stores.find((s) => s.id === selectedId) ?? stores[0] ?? null;
 
   const setStatus = (status: SellerStatus) => {
     if (!activeStore) return;
-    setStatuses((prev) => ({ ...prev, [activeStore.id]: status }));
+    updateStoreStatus(activeStore.id, status);
   };
 
   return (
@@ -43,10 +36,10 @@ export default function AdminSellersPage() {
       </div>
 
       <div className="card grid grid-cols-1 sm:grid-cols-[16rem_1fr]">
-        <SellerList stores={stores} activeId={activeId} statuses={statuses} onSelect={setActiveId} />
+        <SellerList stores={stores} activeId={activeStore?.id ?? null} statuses={{}} onSelect={setSelectedId} />
         {activeStore ? (
           <div className="border-t border-[var(--color-border)] sm:border-l sm:border-t-0">
-            <SellerDetailsPanel store={activeStore} status={statuses[activeStore.id]} onAction={setStatus} />
+            <SellerDetailsPanel store={activeStore} status={activeStore.status} onAction={setStatus} />
           </div>
         ) : (
           <div className="flex items-center justify-center p-10 text-sm text-[var(--color-muted)]">
@@ -57,20 +50,28 @@ export default function AdminSellersPage() {
 
       <div>
         <h2 className="section-title mb-3">Seller list</h2>
-        <div className="card overflow-x-auto">
+        <input
+          type="search"
+          value={tableQuery}
+          onChange={(e) => setTableQuery(e.target.value)}
+          placeholder="Search sellers..."
+          aria-label="Search sellers"
+          className="mb-3 w-full max-w-sm rounded-md border border-[var(--color-border)] px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]"
+        />
+        <div className="card max-h-96 overflow-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+            <thead className="sticky top-0 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
               <tr>
                 <th className="px-4 py-3">Store name</th>
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
-              {stores.map((store) => (
+              {filteredStores.map((store) => (
                 <tr key={store.id}>
                   <td className="px-4 py-3 font-medium text-slate-800">{store.storeName}</td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={statuses[store.id]} />
+                    <StatusBadge status={store.status} />
                   </td>
                 </tr>
               ))}

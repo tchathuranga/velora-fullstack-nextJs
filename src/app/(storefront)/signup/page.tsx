@@ -72,7 +72,7 @@ function SignupForm() {
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary)]">
             <UserPlus size={22} />
           </span>
-          <h1 className="text-xl font-semibold text-slate-900">Create your buyer account</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Create your account</h1>
           <p className="mt-1 text-sm text-[var(--color-muted)]">
             Save your address, track orders and message sellers.
           </p>

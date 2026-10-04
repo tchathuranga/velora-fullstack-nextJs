@@ -55,14 +55,13 @@ export function BillingForm({ values, onChange, saveAddress, onToggleSaveAddress
           label="Phone number 1"
           type="tel"
           required
-          hint="We need two contact numbers"
           value={values.phone1}
           onChange={(e) => onChange("phone1", e.target.value)}
         />
         <Input
           label="Phone number 2"
           type="tel"
-          required
+          hint="Optional"
           value={values.phone2}
           onChange={(e) => onChange("phone2", e.target.value)}
         />

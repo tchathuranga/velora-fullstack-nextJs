@@ -31,3 +31,10 @@ export function getStoredOrder(id: string, fallbackOrders: Order[] = []): Order 
 export function generateOrderId(): string {
   return `ORD-${Math.floor(10000 + Math.random() * 89999)}`;
 }
+
+/** Orders placed in this browser session, merged with the seed orders (session orders win on id clash). */
+export function getAllOrders(seedOrders: Order[]): Order[] {
+  const stored = readAll();
+  const seedIds = new Set(seedOrders.map((o) => o.id));
+  return [...Object.values(stored).filter((o) => !seedIds.has(o.id)), ...seedOrders.map((o) => stored[o.id] ?? o)];
+}

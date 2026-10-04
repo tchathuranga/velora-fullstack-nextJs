@@ -5,6 +5,8 @@ interface ProductFormState {
   step: "form" | "attributes" | "images";
   submitted: boolean;
   title: string;
+  categoryId: string;
+  subcategoryId: string;
   price: string;
   quantity: string;
   brand: string;
@@ -12,8 +14,11 @@ interface ProductFormState {
   color: string;
   packageInclude: string;
   customSpecs: SpecEntry[];
+  description: string;
   handlingTime: string;
   deliveryTime: string;
+  deliveryFee: string;
+  freeDelivery: boolean;
   paymentMethods: PaymentMethod[];
   location: string;
   variations: ProductVariations | null;
@@ -23,6 +28,8 @@ const initialState: ProductFormState = {
   step: "form",
   submitted: false,
   title: "",
+  categoryId: "",
+  subcategoryId: "",
   price: "",
   quantity: "",
   brand: "",
@@ -30,8 +37,11 @@ const initialState: ProductFormState = {
   color: "",
   packageInclude: "",
   customSpecs: [],
+  description: "",
   handlingTime: "",
   deliveryTime: "",
+  deliveryFee: "",
+  freeDelivery: false,
   paymentMethods: [],
   location: "",
   variations: null,
@@ -47,9 +57,22 @@ const productFormSlice = createSlice({
     setSubmitted: (state, action: PayloadAction<boolean>) => {
       state.submitted = action.payload;
     },
-    setField: (state, action: PayloadAction<{ field: keyof Omit<ProductFormState, "step" | "submitted" | "customSpecs" | "paymentMethods" | "variations">; value: string }>) => {
+    setField: (
+      state,
+      action: PayloadAction<{
+        field: keyof Omit<ProductFormState, "step" | "submitted" | "categoryId" | "customSpecs" | "freeDelivery" | "paymentMethods" | "variations">;
+        value: string;
+      }>,
+    ) => {
       const { field, value } = action.payload;
       state[field] = value;
+    },
+    setFreeDelivery: (state, action: PayloadAction<boolean>) => {
+      state.freeDelivery = action.payload;
+    },
+    setCategory: (state, action: PayloadAction<string>) => {
+      state.categoryId = action.payload;
+      state.subcategoryId = "";
     },
     setCustomSpecs: (state, action: PayloadAction<SpecEntry[]>) => {
       state.customSpecs = action.payload;
@@ -71,6 +94,8 @@ export const {
   setStep,
   setSubmitted,
   setField,
+  setCategory,
+  setFreeDelivery,
   setCustomSpecs,
   togglePaymentMethod,
   setVariations,

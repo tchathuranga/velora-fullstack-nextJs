@@ -1,42 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
+import { Package, Plus } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/context/AuthContext";
 import { getStoreBySlug } from "@/lib/data/stores";
 import { getProductsByStore } from "@/lib/data/products";
-import { fetchJson } from "@/lib/fetchJson";
-import { Store, Product } from "@/types";
 import { StoreHeader } from "@/components/store/StoreHeader";
 import { StoreStats } from "@/components/store/StoreStats";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { formatDate } from "@/lib/utils";
+import { useProducts } from "@/context/ProductsContext";
+import { useStores } from "@/context/StoresContext";
 
 export default function StoreOverviewPage() {
   const { storeSlug } = useParams<{ storeSlug: string }>();
-  const [stores, setStores] = useState<Store[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { stores, loading: storesLoading } = useStores();
+  const { products, loading: productsLoading } = useProducts();
+  const { role, storeSlug: ownStoreSlug } = useAuth();
 
-  useEffect(() => {
-    Promise.all([fetchJson<Store[]>("/data/stores.json"), fetchJson<Product[]>("/data/products.json")])
-      .then(([storesData, productsData]) => {
-        setStores(storesData);
-        setProducts(productsData);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <PageLoader />;
+  if (storesLoading || productsLoading) return <PageLoader />;
 
   const store = getStoreBySlug(stores, storeSlug);
   if (!store) notFound();
 
   const storeProducts = getProductsByStore(products, store.id);
+  const isOwner = role === "seller" && ownStoreSlug === store.slug;
 
   return (
     <div className="container-page space-y-8 py-8">
       <StoreHeader store={store} />
+
+      
 
       <section className="card p-6">
         <h2 className="section-title mb-3">About us</h2>
@@ -56,10 +53,29 @@ export default function StoreOverviewPage() {
         </dl>
       </section>
 
+      {isOwner && (
+        <div className="flex justify-end">
+          <Link href="/seller/orders">
+            <Button variant="outline">
+              <Package size={18} /> Manage orders
+            </Button>
+          </Link>
+        </div>
+      )}
+
       <StoreStats stats={store.stats} />
 
       <section>
-        <h2 className="section-title mb-4">Products</h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="section-title">Products</h2>
+          {isOwner && (
+            <Link href="/seller/products/new">
+              <Button variant="accent" size="lg" className="shadow-md hover:shadow-lg">
+                <Plus size={20} strokeWidth={2.5} /> List a product
+              </Button>
+            </Link>
+          )}
+        </div>
         <ProductGrid products={storeProducts} />
       </section>
     </div>

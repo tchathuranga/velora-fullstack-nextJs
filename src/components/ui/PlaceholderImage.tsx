@@ -62,6 +62,8 @@ interface PlaceholderImageProps {
   label?: string;
   className?: string;
   iconClassName?: string;
+  /** An actual uploaded photo (data URL). When set, it's rendered instead of the gradient/icon placeholder. */
+  image?: string;
 }
 
 export function PlaceholderImage({
@@ -70,7 +72,13 @@ export function PlaceholderImage({
   label,
   className,
   iconClassName,
+  image,
 }: PlaceholderImageProps) {
+  if (image) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={image} alt={label ?? "Product image"} className={clsx("object-cover", className)} />;
+  }
+
   const hash = hashSeed(seed);
   const gradient = GRADIENTS[hash % GRADIENTS.length];
   const Icon = (icon && ICONS[icon]) || ImageIcon;

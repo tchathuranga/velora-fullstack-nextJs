@@ -1,23 +1,15 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { fetchJson } from "@/lib/fetchJson";
-import { Product } from "@/types";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { useProducts } from "@/context/ProductsContext";
 
 function SearchInner() {
   const searchParams = useSearchParams();
   const q = searchParams.get("q") ?? "";
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchJson<Product[]>("/data/products.json")
-      .then(setProducts)
-      .finally(() => setLoading(false));
-  }, []);
+  const { products, loading } = useProducts();
 
   if (loading) return <PageLoader />;
 
@@ -27,7 +19,7 @@ function SearchInner() {
         (p) =>
           p.title.toLowerCase().includes(query) ||
           p.brand?.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query),
+          p.description.replace(/<[^>]*>/g, " ").toLowerCase().includes(query),
       )
     : products;
 

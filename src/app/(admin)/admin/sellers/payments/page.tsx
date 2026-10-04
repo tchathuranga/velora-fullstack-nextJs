@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Wallet } from "lucide-react";
+import { Search, Wallet } from "lucide-react";
 import { fetchJson } from "@/lib/fetchJson";
 import { Store, SellerTransaction } from "@/types";
 import { SellerPaymentsTable } from "@/components/admin/SellerPaymentsTable";
+import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { PageLoader } from "@/components/ui/PageLoader";
@@ -14,6 +15,7 @@ export default function AdminSellerPaymentsPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [sellerTransactions, setSellerTransactions] = useState<SellerTransaction[]>([]);
   const [storeId, setStoreId] = useState("");
+  const [storeQuery, setStoreQuery] = useState("");
   const [confirmedMap, setConfirmedMap] = useState<Record<string, boolean>>({});
   const [paidOut, setPaidOut] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,15 @@ export default function AdminSellerPaymentsPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const filteredStores = useMemo(() => {
+    const q = storeQuery.trim().toLowerCase();
+    return q ? stores.filter((s) => s.storeName.toLowerCase().includes(q)) : stores;
+  }, [stores, storeQuery]);
+
+  useEffect(() => {
+    if (!filteredStores.some((s) => s.id === storeId)) setStoreId(filteredStores[0]?.id ?? "");
+  }, [filteredStores, storeId]);
 
   const transactions = sellerTransactions
     .filter((tx) => tx.storeId === storeId)
@@ -65,9 +76,21 @@ export default function AdminSellerPaymentsPage() {
         </p>
       </div>
 
-      <div className="max-w-xs">
+      <div className="grid max-w-xl gap-4 sm:grid-cols-2">
+        <div className="relative">
+          <Input
+            label="Search stores"
+            type="search"
+            placeholder="Search by store name"
+            value={storeQuery}
+            onChange={(e) => setStoreQuery(e.target.value)}
+            className="pl-9"
+          />
+          <Search size={16} className="pointer-events-none absolute bottom-3 left-3 text-[var(--color-muted)]" />
+        </div>
         <Select label="Store" value={storeId} onChange={(e) => setStoreId(e.target.value)}>
-          {stores.map((s) => (
+          {filteredStores.length === 0 && <option value="">No stores found</option>}
+          {filteredStores.map((s) => (
             <option key={s.id} value={s.id}>
               {s.storeName}
             </option>

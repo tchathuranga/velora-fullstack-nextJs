@@ -5,9 +5,12 @@ import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { getProductBySlug, getRelatedProducts } from "@/lib/data/products";
 import { getStoreById } from "@/lib/data/stores";
+import { getCategoryById, getSubcategoryById } from "@/lib/data/categories";
 import { getFeedbackForProduct } from "@/lib/data/feedback";
 import { fetchJson } from "@/lib/fetchJson";
-import { Product, Store, Feedback } from "@/types";
+import { Feedback } from "@/types";
+import { useCategories } from "@/context/CategoriesContext";
+import { useStores } from "@/context/StoresContext";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductActions } from "@/components/product/ProductActions";
 import { ProductViewTracker } from "@/components/product/ProductViewTracker";
@@ -16,34 +19,30 @@ import { FeedbackList } from "@/components/feedback/FeedbackList";
 import { ContactSellerButton } from "@/components/store/ContactSellerButton";
 import { StarRating } from "@/components/ui/StarRating";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { useProducts } from "@/context/ProductsContext";
 
 export default function ProductPreviewPage() {
   const { productId } = useParams<{ productId: string }>();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [stores, setStores] = useState<Store[]>([]);
   const [feedbackEntries, setFeedbackEntries] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
+  const { products, loading: productsLoading } = useProducts();
+  const { categories } = useCategories();
+  const { stores, loading: storesLoading } = useStores();
 
   useEffect(() => {
-    Promise.all([
-      fetchJson<Product[]>("/data/products.json"),
-      fetchJson<Store[]>("/data/stores.json"),
-      fetchJson<Feedback[]>("/data/feedback.json"),
-    ])
-      .then(([productsData, storesData, feedbackData]) => {
-        setProducts(productsData);
-        setStores(storesData);
-        setFeedbackEntries(feedbackData);
-      })
+    fetchJson<Feedback[]>("/data/feedback.json")
+      .then(setFeedbackEntries)
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <PageLoader />;
+  if (loading || productsLoading || storesLoading) return <PageLoader />;
 
   const product = getProductBySlug(products, productId);
   if (!product) notFound();
 
   const store = getStoreById(stores, product.storeId);
+  const category = product.categoryId ? getCategoryById(categories, product.categoryId) : undefined;
+  const subcategory = product.subcategoryId ? getSubcategoryById(category, product.subcategoryId) : undefined;
   const related = getRelatedProducts(products, product);
   const feedback = getFeedbackForProduct(feedbackEntries, product.id);
 
@@ -60,9 +59,33 @@ export default function ProductPreviewPage() {
       <ProductViewTracker productId={product.id} />
 
       <div className="grid gap-10 lg:grid-cols-2">
-        <ProductGallery productId={product.id} icon={product.icon} count={product.galleryCount} title={product.title} />
+        <ProductGallery
+          productId={product.id}
+          icon={product.icon}
+          count={product.galleryCount}
+          title={product.title}
+          images={product.images}
+        />
 
         <div>
+          {category && (
+            <p className="mb-1.5 text-xs font-medium text-[var(--color-muted)]">
+              <Link href={`/category/${category.slug}`} className="hover:text-[var(--color-primary)] hover:underline">
+                {category.name}
+              </Link>
+              {subcategory && (
+                <>
+                  {" / "}
+                  <Link
+                    href={`/category/${category.slug}?sub=${subcategory.slug}`}
+                    className="hover:text-[var(--color-primary)] hover:underline"
+                  >
+                    {subcategory.name}
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
           <h1 className="text-2xl font-semibold text-slate-900">{product.title}</h1>
           <div className="mt-2 flex items-center gap-3">
             {store && (
@@ -109,7 +132,10 @@ export default function ProductPreviewPage() {
 
       <section className="mt-8 card p-6">
         <h2 className="section-title mb-4">Description</h2>
-        <p className="text-sm leading-relaxed text-slate-600">{product.description}</p>
+        <div
+          className="max-w-none text-sm leading-relaxed text-slate-600 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--color-border)] [&_blockquote]:pl-3 [&_blockquote]:italic [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-slate-800 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
+          dangerouslySetInnerHTML={{ __html: product.description }}
+        />
       </section>
 
       <section className="mt-12">

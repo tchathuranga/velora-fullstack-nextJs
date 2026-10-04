@@ -32,7 +32,7 @@ export function OrderSummary({
       <div className="space-y-2 border-t border-[var(--color-border)] pt-3 text-sm">
         <div className="flex justify-between">
           <span className="text-[var(--color-muted)]">Delivery cost</span>
-          <span className="font-medium text-slate-800">{formatCurrency(deliveryCost)}</span>
+          <span className="font-medium text-slate-800">{deliveryCost === 0 && items.length > 0 ? "Free" : formatCurrency(deliveryCost)}</span>
         </div>
         <div className="flex justify-between text-base">
           <span className="font-semibold text-slate-900">Total</span>

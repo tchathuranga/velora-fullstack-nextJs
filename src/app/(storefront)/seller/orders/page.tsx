@@ -1,0 +1,75 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Order } from "@/types";
+import { useAuth } from "@/context/AuthContext";
+import { useStores } from "@/context/StoresContext";
+import { useProducts } from "@/context/ProductsContext";
+import { getStoreBySlug } from "@/lib/data/stores";
+import { fetchJson } from "@/lib/fetchJson";
+import { getAllOrders } from "@/lib/orderStorage";
+import { trackingKey } from "@/lib/trackingStorage";
+import { PageLoader } from "@/components/ui/PageLoader";
+import { PlaceholderImage } from "@/components/ui/PlaceholderImage";
+import { TrackingNumberEditor } from "@/components/seller/TrackingNumberEditor";
+
+export default function SellerOrdersPage() {
+  const { storeSlug } = useAuth();
+  const { stores, loading: storesLoading } = useStores();
+  const { products, loading: productsLoading } = useProducts();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchJson<Order[]>("/data/orders.json")
+      .then((seed) => setOrders(getAllOrders(seed)))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || storesLoading || productsLoading) return <PageLoader />;
+
+  const store = storeSlug ? getStoreBySlug(stores, storeSlug) : undefined;
+  const lines = store
+    ? orders.flatMap((order) =>
+        order.items.filter((item) => item.storeId === store.id).map((item) => ({ order, item })),
+      )
+    : [];
+
+  return (
+    <div className="container-page space-y-6 py-8">
+      <h1 className="text-2xl font-bold text-slate-900">Orders</h1>
+
+      {lines.length === 0 ? (
+        <p className="card p-6 text-sm text-[var(--color-muted)]">No orders for your store yet.</p>
+      ) : (
+        <ul className="space-y-4">
+          {lines.map(({ order, item }) => {
+            const product = products.find((p) => p.id === item.productId);
+            return (
+              <li key={`${order.id}:${item.productId}`} className="card p-4">
+                <PlaceholderImage
+                  seed={item.productId}
+                  icon={item.icon}
+                  image={product?.images?.[0]}
+                  label={item.title}
+                  className="h-28 w-24 rounded-md"
+                />
+                <Link
+                  href={`/seller/orders/${order.id}`}
+                  className="mt-2 inline-block text-sm font-semibold text-[var(--color-primary)] hover:underline"
+                >
+                  Order ID: {order.id}
+                </Link>
+                <div className="mt-3 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                  <p className="text-sm text-slate-800">{item.title}</p>
+                  <TrackingNumberEditor trackingKey={trackingKey(order.id, item.productId)} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}

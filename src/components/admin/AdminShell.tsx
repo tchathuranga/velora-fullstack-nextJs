@@ -35,7 +35,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
               <ShieldCheck size={18} />
             </span>
-            <span className="text-sm font-semibold">EDEELZ.lk Admin</span>
+            <span className="text-sm font-semibold">won.lk Admin</span>
           </div>
           <div className="flex items-center gap-4">
             {isAuthorized && !isLoginPage && (
