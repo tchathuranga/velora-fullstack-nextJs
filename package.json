@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",
+    "db:seed-admin": "node --env-file=.env.local scripts/seed-admin.mjs",
+    "db:seed-demo": "node --env-file=.env.local scripts/seed-demo.mjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.12.0",
@@ -14,21 +19,27 @@
     "@tiptap/pm": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "jose": "^6.2.12",
     "lucide-react": "^1.46.0",
     "next": "16.3.5",
+    "pg": "^8.23.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "react-redux": "^9.3.0"
+    "react-redux": "^9.3.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24.19.1",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.3"
   }
 }

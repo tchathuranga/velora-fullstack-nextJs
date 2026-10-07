@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useCategories } from "@/context/CategoriesContext";
+import { getErrorMessage } from "@/Redux/api";
 import { CategoryList } from "@/components/admin/CategoryList";
 import { CategoryDetailsPanel } from "@/components/admin/CategoryDetailsPanel";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +22,11 @@ export default function AdminCategoriesPage() {
   } = useCategories();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [error, setError] = useState("");
+
+  // Admin mutations are async; surface a failure (e.g. a duplicate name) instead of dropping it.
+  const run = (promise: Promise<unknown>) =>
+    promise.then(() => setError("")).catch((err) => setError(getErrorMessage(err)));
 
   if (loading) return <PageLoader />;
 
@@ -33,6 +39,10 @@ export default function AdminCategoriesPage() {
         Manage the categories and subcategories sellers can assign to their products.
       </p>
 
+      {error && (
+        <p className="mt-4 rounded-lg bg-[var(--color-danger-light)] p-3 text-sm text-[var(--color-danger)]">{error}</p>
+      )}
+
       <div className="card mt-6 grid grid-cols-1 sm:grid-cols-[18rem_1fr]">
         <div>
           <form
@@ -40,7 +50,7 @@ export default function AdminCategoriesPage() {
               e.preventDefault();
               const trimmed = newCategoryName.trim();
               if (!trimmed) return;
-              addCategory(trimmed);
+              run(addCategory(trimmed));
               setNewCategoryName("");
             }}
             className="flex gap-2 border-b border-[var(--color-border)] p-3"
@@ -63,14 +73,14 @@ export default function AdminCategoriesPage() {
           <div className="border-t border-[var(--color-border)] sm:border-l sm:border-t-0">
             <CategoryDetailsPanel
               category={activeCategory}
-              onRename={(name) => updateCategory(activeCategory.id, name)}
+              onRename={(name) => run(updateCategory(activeCategory.id, name))}
               onDelete={() => {
-                deleteCategory(activeCategory.id);
+                run(deleteCategory(activeCategory.id));
                 setActiveId(null);
               }}
-              onAddSubcategory={(name) => addSubcategory(activeCategory.id, name)}
-              onRenameSubcategory={(subcategoryId, name) => updateSubcategory(activeCategory.id, subcategoryId, name)}
-              onDeleteSubcategory={(subcategoryId) => deleteSubcategory(activeCategory.id, subcategoryId)}
+              onAddSubcategory={(name) => run(addSubcategory(activeCategory.id, name))}
+              onRenameSubcategory={(subcategoryId, name) => run(updateSubcategory(activeCategory.id, subcategoryId, name))}
+              onDeleteSubcategory={(subcategoryId) => run(deleteSubcategory(activeCategory.id, subcategoryId))}
             />
           </div>
         ) : (

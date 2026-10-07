@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, Wallet } from "lucide-react";
-import { fetchJson } from "@/lib/fetchJson";
-import { Store, SellerTransaction } from "@/types";
+import {
+  getErrorMessage,
+  useConfirmTransactionMutation,
+  useGetPaymentsQuery,
+  usePayOutStoreMutation,
+} from "@/Redux/api";
+import { useStores } from "@/context/StoresContext";
 import { SellerPaymentsTable } from "@/components/admin/SellerPaymentsTable";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -12,41 +17,43 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { calcTransactionFee, calcNetSale, formatCurrency, formatDate, nextBiweeklyMonday } from "@/lib/utils";
 
 export default function AdminSellerPaymentsPage() {
-  const [stores, setStores] = useState<Store[]>([]);
-  const [sellerTransactions, setSellerTransactions] = useState<SellerTransaction[]>([]);
-  const [storeId, setStoreId] = useState("");
+  const { stores, loading: storesLoading } = useStores();
+  const { data: payments, isLoading: paymentsLoading } = useGetPaymentsQuery();
+  const [confirmTransaction] = useConfirmTransactionMutation();
+  const [payOutStore, { isLoading: payingOut }] = usePayOutStoreMutation();
+  const [selectedStoreId, setSelectedStoreId] = useState("");
   const [storeQuery, setStoreQuery] = useState("");
-  const [confirmedMap, setConfirmedMap] = useState<Record<string, boolean>>({});
-  const [paidOut, setPaidOut] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    Promise.all([fetchJson<Store[]>("/data/stores.json"), fetchJson<SellerTransaction[]>("/data/sellerTransactions.json")])
-      .then(([storesData, transactionsData]) => {
-        setStores(storesData);
-        setSellerTransactions(transactionsData);
-        const storesWithTransactions = storesData.filter((s) => transactionsData.some((tx) => tx.storeId === s.id));
-        setStoreId(storesWithTransactions[0]?.id ?? storesData[0]?.id ?? "");
-        setConfirmedMap(Object.fromEntries(transactionsData.map((tx) => [tx.id, tx.confirmed])));
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const sellerTransactions = useMemo(() => payments?.transactions ?? [], [payments]);
 
   const filteredStores = useMemo(() => {
     const q = storeQuery.trim().toLowerCase();
     return q ? stores.filter((s) => s.storeName.toLowerCase().includes(q)) : stores;
   }, [stores, storeQuery]);
 
-  useEffect(() => {
-    if (!filteredStores.some((s) => s.id === storeId)) setStoreId(filteredStores[0]?.id ?? "");
-  }, [filteredStores, storeId]);
+  // The picked store, or else the first one that has transactions (falling back to the first store).
+  const storeId = filteredStores.some((s) => s.id === selectedStoreId)
+    ? selectedStoreId
+    : (filteredStores.find((s) => sellerTransactions.some((tx) => tx.storeId === s.id)) ?? filteredStores[0])?.id ?? "";
 
-  const transactions = sellerTransactions
-    .filter((tx) => tx.storeId === storeId)
-    .map((tx) => ({ ...tx, confirmed: confirmedMap[tx.id] }));
+  const transactions = sellerTransactions.filter((tx) => tx.storeId === storeId);
+  const paidOut = payments?.paidOut[storeId] ?? 0;
 
   const toggleConfirm = (id: string) => {
-    setConfirmedMap((prev) => ({ ...prev, [id]: !prev[id] }));
+    const tx = transactions.find((t) => t.id === id);
+    if (!tx) return;
+    confirmTransaction({ id, confirmed: !tx.confirmed })
+      .unwrap()
+      .then(() => setError(""))
+      .catch((err) => setError(getErrorMessage(err)));
+  };
+
+  const payOut = () => {
+    payOutStore(storeId)
+      .unwrap()
+      .then(() => setError(""))
+      .catch((err) => setError(getErrorMessage(err)));
   };
 
   const totals = useMemo(() => {
@@ -64,7 +71,7 @@ export default function AdminSellerPaymentsPage() {
 
   const availableFunds = Math.max(0, totals.netSale - paidOut);
 
-  if (loading) return <PageLoader />;
+  if (storesLoading || paymentsLoading) return <PageLoader />;
 
   return (
     <div className="container-page space-y-6 py-8">
@@ -75,6 +82,10 @@ export default function AdminSellerPaymentsPage() {
           other Monday.
         </p>
       </div>
+
+      {error && (
+        <p className="rounded-lg bg-[var(--color-danger-light)] p-3 text-sm text-[var(--color-danger)]">{error}</p>
+      )}
 
       <div className="grid max-w-xl gap-4 sm:grid-cols-2">
         <div className="relative">
@@ -88,7 +99,7 @@ export default function AdminSellerPaymentsPage() {
           />
           <Search size={16} className="pointer-events-none absolute bottom-3 left-3 text-[var(--color-muted)]" />
         </div>
-        <Select label="Store" value={storeId} onChange={(e) => setStoreId(e.target.value)}>
+        <Select label="Store" value={storeId} onChange={(e) => setSelectedStoreId(e.target.value)}>
           {filteredStores.length === 0 && <option value="">No stores found</option>}
           {filteredStores.map((s) => (
             <option key={s.id} value={s.id}>
@@ -124,7 +135,7 @@ export default function AdminSellerPaymentsPage() {
                 </p>
               </div>
             </div>
-            <Button variant="danger" disabled={availableFunds === 0} onClick={() => setPaidOut(totals.netSale)}>
+            <Button variant="danger" disabled={availableFunds === 0 || payingOut} onClick={payOut}>
               Paid
             </Button>
           </div>

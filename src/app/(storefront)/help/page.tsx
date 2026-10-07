@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Mail, Phone, MessageCircle } from "lucide-react";
-import { fetchJson } from "@/lib/fetchJson";
-import { SiteConfig } from "@/types";
+import { useGetSiteQuery } from "@/Redux/api";
 import { PageLoader } from "@/components/ui/PageLoader";
 
 const faqs = [
@@ -22,13 +20,11 @@ const faqs = [
 ];
 
 export default function HelpPage() {
-  const [site, setSite] = useState<SiteConfig | null>(null);
+  const { data: site, isLoading } = useGetSiteQuery();
 
-  useEffect(() => {
-    fetchJson<SiteConfig>("/data/site.json").then(setSite);
-  }, []);
+  if (isLoading || !site) return <PageLoader />;
 
-  if (!site) return <PageLoader />;
+  const { email, phone, whatsapp } = site.siteContact;
 
   return (
     <div className="container-page max-w-2xl py-12">
@@ -43,17 +39,25 @@ export default function HelpPage() {
         ))}
       </div>
 
-      <div className="mt-8 card space-y-2 p-5 text-sm">
-        <p className="flex items-center gap-2 text-slate-700">
-          <Mail size={16} className="text-[var(--color-muted)]" /> {site.siteContact.email}
-        </p>
-        <p className="flex items-center gap-2 text-slate-700">
-          <Phone size={16} className="text-[var(--color-muted)]" /> {site.siteContact.phone}
-        </p>
-        <p className="flex items-center gap-2 text-slate-700">
-          <MessageCircle size={16} className="text-[var(--color-muted)]" /> {site.siteContact.whatsapp}
-        </p>
-      </div>
+      {(email || phone || whatsapp) && (
+        <div className="mt-8 card space-y-2 p-5 text-sm">
+          {email && (
+            <p className="flex items-center gap-2 text-slate-700">
+              <Mail size={16} className="text-[var(--color-muted)]" /> {email}
+            </p>
+          )}
+          {phone && (
+            <p className="flex items-center gap-2 text-slate-700">
+              <Phone size={16} className="text-[var(--color-muted)]" /> {phone}
+            </p>
+          )}
+          {whatsapp && (
+            <p className="flex items-center gap-2 text-slate-700">
+              <MessageCircle size={16} className="text-[var(--color-muted)]" /> {whatsapp}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

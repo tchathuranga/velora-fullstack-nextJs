@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { getErrorMessage } from "@/Redux/api";
 
 function SignupForm() {
-  const { registerAsBuyer } = useAuth();
+  const { register } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextRoute = searchParams.get("next") ?? "/account";
@@ -19,6 +20,8 @@ function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({ name: "", username: "", email: "", password: "" });
+  const [formError, setFormError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const validateSignup = () => {
     const nextErrors = {
@@ -54,15 +57,23 @@ function SignupForm() {
     return !Object.values(nextErrors).some(Boolean);
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateSignup()) {
       return;
     }
 
-    registerAsBuyer(name.trim() || "New Buyer", username.trim(), email.trim(), password);
-    router.push(nextRoute);
+    setSubmitting(true);
+    setFormError("");
+    try {
+      await register({ name: name.trim(), username: username.trim(), email: email.trim(), password });
+      router.push(nextRoute);
+    } catch (err) {
+      setFormError(getErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -128,8 +139,11 @@ function SignupForm() {
             }}
             placeholder="••••••••"
           />
-          <Button type="submit" fullWidth size="lg">
-            Create account
+          {formError && (
+            <p className="rounded-lg bg-[var(--color-danger-light)] p-3 text-sm text-[var(--color-danger)]">{formError}</p>
+          )}
+          <Button type="submit" fullWidth size="lg" disabled={submitting}>
+            {submitting ? "Creating account…" : "Create account"}
           </Button>
         </form>
 

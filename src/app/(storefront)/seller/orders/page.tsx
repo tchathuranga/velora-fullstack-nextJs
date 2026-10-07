@@ -1,40 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Order } from "@/types";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { useAuth } from "@/context/AuthContext";
-import { useStores } from "@/context/StoresContext";
 import { useProducts } from "@/context/ProductsContext";
-import { getStoreBySlug } from "@/lib/data/stores";
-import { fetchJson } from "@/lib/fetchJson";
-import { getAllOrders } from "@/lib/orderStorage";
-import { trackingKey } from "@/lib/trackingStorage";
+import { useGetSellerOrdersQuery } from "@/Redux/api";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { PlaceholderImage } from "@/components/ui/PlaceholderImage";
 import { TrackingNumberEditor } from "@/components/seller/TrackingNumberEditor";
 
 export default function SellerOrdersPage() {
-  const { storeSlug } = useAuth();
-  const { stores, loading: storesLoading } = useStores();
+  const { role, hydrated } = useAuth();
   const { products, loading: productsLoading } = useProducts();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: orders = [], isLoading } = useGetSellerOrdersQuery(role === "seller" ? undefined : skipToken);
 
-  useEffect(() => {
-    fetchJson<Order[]>("/data/orders.json")
-      .then((seed) => setOrders(getAllOrders(seed)))
-      .finally(() => setLoading(false));
-  }, []);
+  if (!hydrated || isLoading || productsLoading) return <PageLoader />;
 
-  if (loading || storesLoading || productsLoading) return <PageLoader />;
-
-  const store = storeSlug ? getStoreBySlug(stores, storeSlug) : undefined;
-  const lines = store
-    ? orders.flatMap((order) =>
-        order.items.filter((item) => item.storeId === store.id).map((item) => ({ order, item })),
-      )
-    : [];
+  // The API already returns only this store's items on each order.
+  const lines = orders.flatMap((order) => order.items.map((item) => ({ order, item })));
 
   return (
     <div className="container-page space-y-6 py-8">
@@ -63,7 +46,7 @@ export default function SellerOrdersPage() {
                 </Link>
                 <div className="mt-3 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                   <p className="text-sm text-slate-800">{item.title}</p>
-                  <TrackingNumberEditor trackingKey={trackingKey(order.id, item.productId)} />
+                  <TrackingNumberEditor orderId={order.id} productId={item.productId} trackingNumber={item.trackingNumber} />
                 </div>
               </li>
             );

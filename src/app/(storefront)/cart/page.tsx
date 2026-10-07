@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { useCart, MAX_CART_ITEMS } from "@/context/CartContext";
@@ -8,19 +7,11 @@ import { CartItemRow } from "@/components/cart/CartItemRow";
 import { CartSummary, calculateDeliveryCost } from "@/components/cart/CartSummary";
 import { Button } from "@/components/ui/Button";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { fetchJson } from "@/lib/fetchJson";
-import { Product } from "@/types";
+import { useProducts } from "@/context/ProductsContext";
 
 export default function CartPage() {
   const { items, subtotal, itemCount } = useCart();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchJson<Product[]>("/data/products.json")
-      .then(setProducts)
-      .finally(() => setLoading(false));
-  }, []);
+  const { products, loading } = useProducts();
 
   if (loading) return <PageLoader />;
 

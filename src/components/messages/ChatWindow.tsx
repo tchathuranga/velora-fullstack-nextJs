@@ -5,6 +5,7 @@ import { Send } from "lucide-react";
 import { Message } from "@/types";
 import { MessageBubble } from "@/components/messages/MessageBubble";
 import { Button } from "@/components/ui/Button";
+import { getErrorMessage } from "@/Redux/api";
 
 export function ChatWindow({
   title,
@@ -18,16 +19,24 @@ export function ChatWindow({
   subtitle?: string;
   messages: Message[];
   viewerRole: "buyer" | "seller";
-  onSend: (text: string) => void;
+  /** May reject (the draft is kept and the error shown). */
+  onSend: (text: string) => void | Promise<void>;
   emptyHint?: string;
 }) {
   const [draft, setDraft] = useState("");
+  const [error, setError] = useState("");
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!draft.trim()) return;
-    onSend(draft.trim());
-    setDraft("");
+    const text = draft.trim();
+    if (!text) return;
+    setError("");
+    try {
+      await onSend(text);
+      setDraft("");
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
   };
 
   return (
@@ -47,6 +56,7 @@ export function ChatWindow({
         )}
       </div>
 
+      {error && <p className="px-5 pb-2 text-xs text-[var(--color-danger)]">{error}</p>}
       <form onSubmit={submit} className="flex gap-2 border-t border-[var(--color-border)] p-3">
         <input
           value={draft}

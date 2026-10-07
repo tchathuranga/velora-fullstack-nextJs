@@ -1,39 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { Order } from "@/types";
 import { useAuth } from "@/context/AuthContext";
-import { useStores } from "@/context/StoresContext";
 import { useProducts } from "@/context/ProductsContext";
-import { getStoreBySlug } from "@/lib/data/stores";
-import { fetchJson } from "@/lib/fetchJson";
-import { getStoredOrder } from "@/lib/orderStorage";
-import { trackingKey } from "@/lib/trackingStorage";
+import { useGetSellerOrderQuery } from "@/Redux/api";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { PlaceholderImage } from "@/components/ui/PlaceholderImage";
 import { TrackingNumberEditor } from "@/components/seller/TrackingNumberEditor";
 
 export default function SellerOrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
-  const { storeSlug } = useAuth();
-  const { stores, loading: storesLoading } = useStores();
+  const { role, hydrated } = useAuth();
   const { products, loading: productsLoading } = useProducts();
-  const [order, setOrder] = useState<Order | undefined>();
-  const [loading, setLoading] = useState(true);
+  const { data: order, isLoading } = useGetSellerOrderQuery(role === "seller" ? orderId : skipToken);
 
-  useEffect(() => {
-    fetchJson<Order[]>("/data/orders.json")
-      .then((seed) => setOrder(getStoredOrder(orderId, seed)))
-      .finally(() => setLoading(false));
-  }, [orderId]);
+  if (!hydrated || isLoading || productsLoading) return <PageLoader />;
 
-  if (loading || storesLoading || productsLoading) return <PageLoader />;
-
-  const store = storeSlug ? getStoreBySlug(stores, storeSlug) : undefined;
-  const items = order && store ? order.items.filter((item) => item.storeId === store.id) : [];
+  // For a seller the API returns the order with only their store's items.
+  const items = role === "seller" && order ? order.items : [];
 
   if (!order || items.length === 0) {
     return (
@@ -91,7 +78,7 @@ export default function SellerOrderDetailPage() {
                 ))}
               </div>
             )}
-            <TrackingNumberEditor trackingKey={trackingKey(order.id, item.productId)} />
+            <TrackingNumberEditor orderId={order.id} productId={item.productId} trackingNumber={item.trackingNumber} />
           </section>
         );
       })}

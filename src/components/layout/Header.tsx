@@ -41,8 +41,8 @@ export function Header() {
     router.push(query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : "/search");
   };
 
-  const logout = () => {
-    authLogout();
+  const logout = async () => {
+    await authLogout().catch(() => {});
     router.push("/");
   };
 

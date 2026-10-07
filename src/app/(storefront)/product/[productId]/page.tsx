@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { getProductBySlug, getRelatedProducts } from "@/lib/data/products";
+import { getRelatedProducts } from "@/lib/data/products";
 import { getStoreById } from "@/lib/data/stores";
 import { getCategoryById, getSubcategoryById } from "@/lib/data/categories";
-import { getFeedbackForProduct } from "@/lib/data/feedback";
-import { fetchJson } from "@/lib/fetchJson";
-import { Feedback } from "@/types";
+import { useGetFeedbackQuery, useGetProductQuery } from "@/Redux/api";
 import { useCategories } from "@/context/CategoriesContext";
 import { useStores } from "@/context/StoresContext";
 import { ProductGallery } from "@/components/product/ProductGallery";
@@ -23,28 +20,20 @@ import { useProducts } from "@/context/ProductsContext";
 
 export default function ProductPreviewPage() {
   const { productId } = useParams<{ productId: string }>();
-  const [feedbackEntries, setFeedbackEntries] = useState<Feedback[]>([]);
-  const [loading, setLoading] = useState(true);
   const { products, loading: productsLoading } = useProducts();
   const { categories } = useCategories();
   const { stores, loading: storesLoading } = useStores();
+  const { data: product, isLoading: productLoading, isError } = useGetProductQuery(productId);
+  const { data: feedback = [], isLoading: feedbackLoading } = useGetFeedbackQuery(product?.id ?? "", { skip: !product });
 
-  useEffect(() => {
-    fetchJson<Feedback[]>("/data/feedback.json")
-      .then(setFeedbackEntries)
-      .finally(() => setLoading(false));
-  }, []);
+  if (productLoading || productsLoading || storesLoading || feedbackLoading) return <PageLoader />;
 
-  if (loading || productsLoading || storesLoading) return <PageLoader />;
-
-  const product = getProductBySlug(products, productId);
-  if (!product) notFound();
+  if (isError || !product) notFound();
 
   const store = getStoreById(stores, product.storeId);
   const category = product.categoryId ? getCategoryById(categories, product.categoryId) : undefined;
   const subcategory = product.subcategoryId ? getSubcategoryById(category, product.subcategoryId) : undefined;
   const related = getRelatedProducts(products, product);
-  const feedback = getFeedbackForProduct(feedbackEntries, product.id);
 
   const specs = [
     product.brand && { label: "Brand", value: product.brand },
