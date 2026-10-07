@@ -27,21 +27,15 @@ import { VariationSummaryTable } from "@/components/seller/VariationSummaryTable
 import { useAuth } from "@/context/AuthContext";
 import { useProducts } from "@/context/ProductsContext";
 import { useCategories } from "@/context/CategoriesContext";
-import { useStores } from "@/context/StoresContext";
-import { getStoreBySlug } from "@/lib/data/stores";
 import { getCategoryById } from "@/lib/data/categories";
 import { fileToDataUrl } from "@/lib/image";
-import { VariationAttribute, PaymentMethod, Product } from "@/types";
-
-function slugify(title: string): string {
-  return title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "product";
-}
+import { getErrorMessage } from "@/Redux/api";
+import { VariationAttribute, PaymentMethod } from "@/types";
 
 export default function NewProductPage() {
   const { storeSlug } = useAuth();
   const { addProduct } = useProducts();
   const { categories } = useCategories();
-  const { stores } = useStores();
   const dispatch = useAppDispatch();
   const step = useAppSelector((state) => state.productForm.step);
   const submitted = useAppSelector((state) => state.productForm.submitted);
@@ -65,6 +59,8 @@ export default function NewProductPage() {
   const variations = useAppSelector((state) => state.productForm.variations);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [descriptionError, setDescriptionError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const selectedCategory = getCategoryById(categories, categoryId);
 
   const togglePayment = (method: PaymentMethod) => {
@@ -81,42 +77,40 @@ export default function NewProductPage() {
     }
     setDescriptionError("");
 
-    const store = storeSlug ? getStoreBySlug(stores, storeSlug) : undefined;
-    const id = `p-${Date.now()}`;
-    const images = await Promise.all(photoFiles.map((file) => fileToDataUrl(file))).catch(() => []);
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const images = await Promise.all(photoFiles.map((file) => fileToDataUrl(file))).catch(() => {
+        throw new Error("One of the photos couldn't be processed. Please try different images.");
+      });
 
-    const newProduct: Product = {
-      id,
-      slug: `${slugify(title)}-${id.slice(2)}`,
-      title,
-      storeId: store?.id ?? "",
-      price: Number(price) || 0,
-      quantity: Number(quantity) || 0,
-      brand: brand || undefined,
-      size: size || undefined,
-      color: color || undefined,
-      packageInclude: packageInclude || undefined,
-      customSpecs,
-      description,
-      handlingTime,
-      deliveryTime,
-      freeDelivery,
-      deliveryFee: freeDelivery ? 0 : Number(deliveryFee) || 0,
-      paymentMethods,
-      location,
-      categoryId: categoryId || undefined,
-      subcategoryId: subcategoryId || undefined,
-      icon: "",
-      galleryCount: Math.max(images.length, 1),
-      images: images.length ? images : undefined,
-      tags: ["new"],
-      rating: 0,
-      reviewCount: 0,
-      createdAt: new Date().toISOString().slice(0, 10),
-      variations: variations ?? undefined,
-    };
-
-    addProduct(newProduct);
+      await addProduct({
+        title,
+        categoryId: categoryId || null,
+        subcategoryId: subcategoryId || null,
+        price: Number(price) || 0,
+        quantity: Number(quantity) || 0,
+        brand: brand || undefined,
+        size: size || undefined,
+        color: color || undefined,
+        packageInclude: packageInclude || undefined,
+        customSpecs,
+        description,
+        handlingTime,
+        deliveryTime,
+        freeDelivery,
+        deliveryFee: freeDelivery ? 0 : Number(deliveryFee) || 0,
+        paymentMethods,
+        location,
+        images,
+        variations: variations ?? null,
+      });
+    } catch (err) {
+      setSubmitError(err instanceof Error && !("status" in err) ? err.message : getErrorMessage(err));
+      setSubmitting(false);
+      return;
+    }
+    setSubmitting(false);
     dispatch(setSubmitted(true));
   };
 
@@ -388,9 +382,12 @@ export default function NewProductPage() {
         />
       </section>
 
+      {submitError && (
+        <p className="rounded-lg bg-[var(--color-danger-light)] p-3 text-sm text-[var(--color-danger)]">{submitError}</p>
+      )}
       <div className="flex justify-end">
-        <Button type="submit" size="lg">
-          List product
+        <Button type="submit" size="lg" disabled={submitting}>
+          {submitting ? "Listing product…" : "List product"}
         </Button>
       </div>
     </form>

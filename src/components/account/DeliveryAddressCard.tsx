@@ -6,21 +6,32 @@ import { Address } from "@/types";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { getErrorMessage } from "@/Redux/api";
 
 export function DeliveryAddressCard({
   address,
   onSave,
 }: {
   address: Address;
-  onSave: (address: Address) => void;
+  onSave: (address: Address) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(address);
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(draft);
-    setOpen(false);
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(draft);
+      setOpen(false);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -78,8 +89,9 @@ export function DeliveryAddressCard({
             />
           </div>
           <Input label="Zip code" required value={draft.zipCode} onChange={(e) => setDraft({ ...draft, zipCode: e.target.value })} />
-          <Button type="submit" fullWidth>
-            Save address
+          {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+          <Button type="submit" fullWidth disabled={saving}>
+            {saving ? "Saving…" : "Save address"}
           </Button>
         </form>
       </Modal>

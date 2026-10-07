@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useStores } from "@/context/StoresContext";
+import { getErrorMessage } from "@/Redux/api";
 import { SellerStatus } from "@/types";
 import { SellerList } from "@/components/admin/SellerList";
 import { SellerDetailsPanel } from "@/components/admin/SellerDetailsPanel";
@@ -13,6 +14,7 @@ export default function AdminSellersPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [tableQuery, setTableQuery] = useState("");
+  const [error, setError] = useState("");
 
   if (loading) return <PageLoader />;
 
@@ -23,7 +25,9 @@ export default function AdminSellersPage() {
 
   const setStatus = (status: SellerStatus) => {
     if (!activeStore) return;
-    updateStoreStatus(activeStore.id, status);
+    updateStoreStatus(activeStore.id, status)
+      .then(() => setError(""))
+      .catch((err) => setError(getErrorMessage(err)));
   };
 
   return (
@@ -34,6 +38,10 @@ export default function AdminSellersPage() {
           Approve, decline or limit sellers based on their store details and payment information.
         </p>
       </div>
+
+      {error && (
+        <p className="rounded-lg bg-[var(--color-danger-light)] p-3 text-sm text-[var(--color-danger)]">{error}</p>
+      )}
 
       <div className="card grid grid-cols-1 sm:grid-cols-[16rem_1fr]">
         <SellerList stores={stores} activeId={activeStore?.id ?? null} statuses={{}} onSelect={setSelectedId} />

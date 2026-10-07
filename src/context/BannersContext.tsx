@@ -1,73 +1,50 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef } from "react";
-import { Banner } from "@/types";
-import { fetchJson } from "@/lib/fetchJson";
-import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
+import { createContext, useContext, useMemo } from "react";
 import {
-  addBanner as addBannerAction,
-  deleteBanner as deleteBannerAction,
-  moveBanner as moveBannerAction,
-  setBanners,
-  updateBanner as updateBannerAction,
-  updateBannerImage as updateBannerImageAction,
-} from "@/Redux/slices/bannersSlice";
-
-const STORAGE_KEY = "velora_banners";
+  useAddBannerMutation,
+  useDeleteBannerMutation,
+  useGetBannersQuery,
+  useMoveBannerMutation,
+  useUpdateBannerMutation,
+} from "@/Redux/api";
+import type { Banner } from "@/types";
 
 interface BannersContextValue {
   banners: Banner[];
   loading: boolean;
-  addBanner: (title: string) => void;
-  updateBanner: (id: string, fields: { title?: string; subtitle?: string }) => void;
-  updateBannerImage: (id: string, imageUrl: string | undefined) => void;
-  deleteBanner: (id: string) => void;
-  moveBanner: (id: string, direction: "up" | "down") => void;
+  /** Mutations are admin-only and reject with the API error. */
+  addBanner: (title: string) => Promise<void>;
+  updateBanner: (id: string, fields: { title?: string; subtitle?: string }) => Promise<void>;
+  updateBannerImage: (id: string, imageUrl: string | undefined) => Promise<void>;
+  deleteBanner: (id: string) => Promise<void>;
+  moveBanner: (id: string, direction: "up" | "down") => Promise<void>;
 }
 
 const BannersContext = createContext<BannersContextValue | undefined>(undefined);
+const EMPTY: Banner[] = [];
 
 export function BannersProvider({ children }: { children: React.ReactNode }) {
-  const dispatch = useAppDispatch();
-  const banners = useAppSelector((state) => state.banners.banners);
-  const ready = useAppSelector((state) => state.banners.ready);
-  const initialized = useRef(false);
+  const { data, isLoading } = useGetBannersQuery();
+  const [addBanner] = useAddBannerMutation();
+  const [updateBanner] = useUpdateBannerMutation();
+  const [deleteBanner] = useDeleteBannerMutation();
+  const [moveBanner] = useMoveBannerMutation();
 
-  useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        dispatch(setBanners(JSON.parse(stored)));
-        return;
-      }
-    } catch {
-      // ignore, fall through to seeding from the static catalog
-    }
-
-    fetchJson<Banner[]>("/data/banners.json")
-      .then((seed) => dispatch(setBanners(seed)))
-      .catch(() => dispatch(setBanners([])));
-  }, [dispatch]);
-
-  return (
-    <BannersContext.Provider
-      value={{
-        banners,
-        loading: !ready,
-        addBanner: (title) => dispatch(addBannerAction({ title })),
-        updateBanner: (id, fields) => dispatch(updateBannerAction({ id, ...fields })),
-        updateBannerImage: (id, imageUrl) => dispatch(updateBannerImageAction({ id, imageUrl })),
-        deleteBanner: (id) => dispatch(deleteBannerAction(id)),
-        moveBanner: (id, direction) => dispatch(moveBannerAction({ id, direction })),
-      }}
-    >
-      {children}
-    </BannersContext.Provider>
+  const value = useMemo<BannersContextValue>(
+    () => ({
+      banners: data ?? EMPTY,
+      loading: isLoading,
+      addBanner: async (title) => void (await addBanner({ title }).unwrap()),
+      updateBanner: async (id, fields) => void (await updateBanner({ id, ...fields }).unwrap()),
+      updateBannerImage: async (id, imageUrl) => void (await updateBanner({ id, imageUrl: imageUrl ?? null }).unwrap()),
+      deleteBanner: async (id) => void (await deleteBanner(id).unwrap()),
+      moveBanner: async (id, direction) => void (await moveBanner({ id, direction }).unwrap()),
+    }),
+    [data, isLoading, addBanner, updateBanner, deleteBanner, moveBanner],
   );
+
+  return <BannersContext.Provider value={value}>{children}</BannersContext.Provider>;
 }
 
 export function useBanners() {

@@ -1,38 +1,32 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ShieldCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/context/AuthContext";
-import { fetchJson } from "@/lib/fetchJson";
-import type { DemoUser } from "@/lib/data/users";
+import { getErrorMessage } from "@/Redux/api";
 
 export default function AdminLoginPage() {
   const { loginAdmin } = useAuth();
   const router = useRouter();
-  const [admins, setAdmins] = useState<DemoUser[]>([]);
-  const [adminsLoading, setAdminsLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchJson<DemoUser[]>("/data/admins.json")
-      .then(setAdmins)
-      .catch(() => setError("Couldn't load admin accounts. Please refresh and try again."))
-      .finally(() => setAdminsLoading(false));
-  }, []);
-
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = loginAdmin(admins, username, password);
-    if (!user) {
-      setError("Invalid admin credentials.");
-      return;
+    setSubmitting(true);
+    try {
+      await loginAdmin(username.trim(), password);
+      router.push("/admin/sellers");
+    } catch (err) {
+      setError(getErrorMessage(err, "Invalid admin credentials."));
+    } finally {
+      setSubmitting(false);
     }
-    router.push("/admin/sellers");
   };
 
   return (
@@ -79,8 +73,8 @@ export default function AdminLoginPage() {
             </p>
           )}
 
-          <Button type="submit" fullWidth size="lg" variant="secondary" disabled={adminsLoading}>
-            Sign in
+          <Button type="submit" fullWidth size="lg" variant="secondary" disabled={submitting}>
+            {submitting ? "Signing in…" : "Sign in"}
           </Button>
         </form>
 

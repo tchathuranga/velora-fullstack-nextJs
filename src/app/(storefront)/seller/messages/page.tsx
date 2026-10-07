@@ -1,47 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Conversation, Store } from "@/types";
+import { useState } from "react";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { useAuth } from "@/context/AuthContext";
-import { getStoreBySlug } from "@/lib/data/stores";
-import { getConversationsForStore } from "@/lib/data/messages";
-import { fetchJson } from "@/lib/fetchJson";
+import { useGetConversationsQuery, useSendMessageMutation } from "@/Redux/api";
 import { ConversationList } from "@/components/messages/ConversationList";
 import { ChatWindow } from "@/components/messages/ChatWindow";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { generateId } from "@/lib/utils";
+
+const POLL_MS = 15_000;
 
 export default function SellerMessagesPage() {
-  const { storeSlug } = useAuth();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { role, hydrated } = useAuth();
+  const { data, isLoading } = useGetConversationsQuery(role === "seller" ? "seller" : skipToken, {
+    pollingInterval: POLL_MS,
+  });
+  const [sendMessage] = useSendMessageMutation();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([fetchJson<Store[]>("/data/stores.json"), fetchJson<Conversation[]>("/data/conversations.json")])
-      .then(([stores, conversationsData]) => {
-        const store = storeSlug ? getStoreBySlug(stores, storeSlug) : undefined;
-        const storeConversations = store ? getConversationsForStore(conversationsData, store.id) : [];
-        setConversations(storeConversations);
-        setActiveId(storeConversations[0]?.id ?? null);
-      })
-      .finally(() => setLoading(false));
-  }, [storeSlug]);
+  if (!hydrated || isLoading) return <PageLoader />;
 
-  if (loading) return <PageLoader />;
-
-  const active = conversations.find((c) => c.id === activeId) ?? null;
-
-  const sendReply = (text: string) => {
-    if (!active) return;
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === active.id
-          ? { ...c, messages: [...c.messages, { id: generateId("msg"), sender: "seller", text, timestamp: new Date().toISOString() }] }
-          : c,
-      ),
-    );
-  };
+  // A buyer who opened the chat but hasn't written yet isn't worth showing.
+  const conversations = (data ?? []).filter((c) => c.messages.length > 0);
+  const active = conversations.find((c) => c.id === selectedId) ?? conversations[0] ?? null;
 
   return (
     <div className="container-page py-8">
@@ -56,11 +37,18 @@ export default function SellerMessagesPage() {
             name: c.buyerName,
             preview: c.messages.at(-1)?.text ?? "",
           }))}
-          activeId={activeId}
-          onSelect={setActiveId}
+          activeId={active?.id ?? null}
+          onSelect={setSelectedId}
         />
         {active ? (
-          <ChatWindow title={active.buyerName} messages={active.messages} viewerRole="seller" onSend={sendReply} />
+          <ChatWindow
+            title={active.buyerName}
+            messages={active.messages}
+            viewerRole="seller"
+            onSend={async (text) => {
+              await sendMessage({ conversationId: active.id, text }).unwrap();
+            }}
+          />
         ) : (
           <div className="flex h-[32rem] items-center justify-center text-sm text-[var(--color-muted)]">
             No conversations yet — buyers who message your store will appear here.

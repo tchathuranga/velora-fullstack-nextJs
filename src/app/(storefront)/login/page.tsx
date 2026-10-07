@@ -2,32 +2,21 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LogIn, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/context/AuthContext";
-import { useStores } from "@/context/StoresContext";
-import { fetchJson } from "@/lib/fetchJson";
-import type { DemoUser } from "@/lib/data/users";
+import { getErrorMessage } from "@/Redux/api";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const { stores } = useStores();
   const router = useRouter();
-  const [users, setUsers] = useState<DemoUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({ identifier: "", password: "" });
-
-  useEffect(() => {
-    fetchJson<DemoUser[]>("/data/users.json")
-      .then(setUsers)
-      .catch(() => setError("Couldn't load demo accounts. Please refresh and try again."))
-      .finally(() => setUsersLoading(false));
-  }, []);
 
   const validateLogin = () => {
     const trimmedIdentifier = identifier.trim();
@@ -50,20 +39,22 @@ export default function LoginPage() {
     return !Object.values(nextErrors).some(Boolean);
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateLogin()) {
       return;
     }
 
-    const user = login(users, identifier, password, stores);
-    if (!user) {
-      setError("Invalid username or password. Please check your credentials and try again.");
-      return;
+    setSubmitting(true);
+    try {
+      const user = await login(identifier.trim(), password);
+      router.push(user.role === "seller" ? `/store/${user.storeSlug}` : "/account");
+    } catch (err) {
+      setError(getErrorMessage(err, "Invalid username or password. Please check your credentials and try again."));
+    } finally {
+      setSubmitting(false);
     }
-
-    router.push(user.role === "seller" ? `/store/${user.storeSlug}` : "/account");
   };
 
   return (
@@ -94,7 +85,7 @@ export default function LoginPage() {
               setError("");
               setFieldErrors((prev) => ({ ...prev, identifier: "" }));
             }}
-            placeholder="e.g. ayesha"
+            placeholder="Username or email"
           />
           <Input
             label="Password"
@@ -118,8 +109,8 @@ export default function LoginPage() {
             </p>
           )}
 
-          <Button type="submit" fullWidth size="lg" disabled={usersLoading}>
-            Log in
+          <Button type="submit" fullWidth size="lg" disabled={submitting}>
+            {submitting ? "Logging in…" : "Log in"}
           </Button>
         </form>
 

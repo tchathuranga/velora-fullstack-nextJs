@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CheckCircle2, Clock3, Mail, Phone, ShieldAlert, XCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useStores } from "@/context/StoresContext";
+import { useGetSiteQuery } from "@/Redux/api";
 import { getStoreBySlug } from "@/lib/data/stores";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -55,6 +56,7 @@ const STATUS_COPY: Record<SellerStatus, { title: string; message: string }> = {
 export default function SellStatusPage() {
   const { storeSlug, sellerStoreSlug, hydrated } = useAuth();
   const { stores, loading } = useStores();
+  const { data: site } = useGetSiteQuery();
 
   if (!hydrated || loading) return <PageLoader />;
 
@@ -98,14 +100,20 @@ export default function SellStatusPage() {
             <Button>Go to my store</Button>
           </Link>
         ) : (
-          <div className="mt-6 space-y-2 rounded-lg bg-slate-50 p-4 text-left text-sm">
-            <p className="flex items-center gap-2 text-slate-700">
-              <Mail size={16} className="text-[var(--color-muted)]" /> support@won.lk
-            </p>
-            <p className="flex items-center gap-2 text-slate-700">
-              <Phone size={16} className="text-[var(--color-muted)]" /> +94 11 234 5678
-            </p>
-          </div>
+          (site?.siteContact.email || site?.siteContact.phone) && (
+            <div className="mt-6 space-y-2 rounded-lg bg-slate-50 p-4 text-left text-sm">
+              {site.siteContact.email && (
+                <p className="flex items-center gap-2 text-slate-700">
+                  <Mail size={16} className="text-[var(--color-muted)]" /> {site.siteContact.email}
+                </p>
+              )}
+              {site.siteContact.phone && (
+                <p className="flex items-center gap-2 text-slate-700">
+                  <Phone size={16} className="text-[var(--color-muted)]" /> {site.siteContact.phone}
+                </p>
+              )}
+            </div>
+          )
         )}
 
         <p className="mt-6 text-sm font-medium text-slate-800">

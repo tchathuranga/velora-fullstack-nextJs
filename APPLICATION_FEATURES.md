@@ -47,7 +47,7 @@ A full-stack Next.js e-commerce marketplace platform with buyer, seller, and adm
 - **Secure Admin Access:**
   - Separate from buyer/seller authentication
   - Username & password authentication
-  - Credential validation against admins.json
+  - Credentials verified server-side against the database (bcrypt-hashed passwords, httpOnly session cookie)
   - Error handling for invalid credentials
   - Redirects to sellers dashboard after login
 
@@ -523,17 +523,15 @@ A full-stack Next.js e-commerce marketplace platform with buyer, seller, and adm
   - RecentlyViewedContext for browsing history
 
 ### Data Management
-- JSON data files for demo data
-  - `admins.json` - Admin accounts
-  - `buyers.json` - Buyer profiles and addresses
-  - `stores.json` - Seller store information
-  - `products.json` - Product catalog
-  - `feedback.json` - Customer reviews/feedback
-  - `conversations.json` - Message conversations
-  - `orders.json` - Order data
-  - `sellerTransactions.json` - Payment transactions
-  - `users.json` - User accounts
-  - `site.json` - Site configuration (contact, bank info)
+- PostgreSQL database (schema in `db/schema.sql`), accessed through Next.js route handlers under `/api`
+  - `users` / `user_addresses` - Accounts (buyer, admin) and saved delivery addresses
+  - `stores` - Seller stores (a seller is a user who owns an approved store)
+  - `categories` / `subcategories` / `banners` - Admin-managed catalog structure and homepage slider
+  - `products` - Product catalog, including photos and variations
+  - `orders` / `order_items` - Orders and per-store line items with tracking numbers
+  - `seller_transactions` / `seller_payouts` - Payment confirmation and payouts
+  - `feedback`, `wishlist_items`, `conversations` / `messages` - Reviews, saved items, buyer-seller chat
+  - `site_settings` - Contact details and the bank accounts shown to bank-transfer buyers
 
 ### Performance Features
 - Page loaders for data fetching
@@ -652,9 +650,8 @@ A full-stack Next.js e-commerce marketplace platform with buyer, seller, and adm
 - User activity tracking
 
 ### Data Storage
-- Client-side session storage for orders
-- Browser localStorage for user preferences
-- JSON files for static data
+- PostgreSQL for all accounts, catalog, orders, payments and messages
+- Browser localStorage only for the cart, recently-viewed list and a guest's wishlist
 - Redux store for state management
 
 ---

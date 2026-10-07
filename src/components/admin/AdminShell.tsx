@@ -22,8 +22,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, isLoginPage, isAuthorized, router]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout().catch(() => {});
     router.push(LOGIN_PATH);
   };
 

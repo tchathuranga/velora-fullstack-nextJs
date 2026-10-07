@@ -1,25 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { useWishlist } from "@/context/WishlistContext";
-import { fetchJson } from "@/lib/fetchJson";
-import { Product } from "@/types";
+import { useProducts } from "@/context/ProductsContext";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { Button } from "@/components/ui/Button";
 import { PageLoader } from "@/components/ui/PageLoader";
 
 export default function WishlistPage() {
   const { productIds } = useWishlist();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchJson<Product[]>("/data/products.json")
-      .then(setProducts)
-      .finally(() => setLoading(false));
-  }, []);
+  const { products, loading } = useProducts();
 
   if (loading) return <PageLoader />;
 

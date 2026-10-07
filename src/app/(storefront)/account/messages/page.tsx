@@ -1,79 +1,44 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { LogIn } from "lucide-react";
-import { Conversation, Store } from "@/types";
 import { useAuth } from "@/context/AuthContext";
-import { getConversationsForBuyer } from "@/lib/data/messages";
-import { getStoreById } from "@/lib/data/stores";
-import { fetchJson } from "@/lib/fetchJson";
+import { useGetConversationsQuery, useSendMessageMutation, useStartConversationMutation } from "@/Redux/api";
 import { ConversationList } from "@/components/messages/ConversationList";
 import { ChatWindow } from "@/components/messages/ChatWindow";
 import { Button } from "@/components/ui/Button";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { generateId } from "@/lib/utils";
 
-function BuyerMessagesInner({ buyerId, buyerName }: { buyerId: string; buyerName: string }) {
+const POLL_MS = 15_000;
+
+function BuyerMessagesInner() {
   const searchParams = useSearchParams();
-  const [stores, setStores] = useState<Store[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const storeParam = searchParams.get("store");
+  const { data: conversations = [], isLoading } = useGetConversationsQuery("buyer", { pollingInterval: POLL_MS });
+  const [startConversation] = useStartConversationMutation();
+  const [sendMessage] = useSendMessageMutation();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const requestedStore = useRef<string | null>(null);
 
+  // Arriving via "Contact seller": create the conversation with that store if it doesn't exist yet.
   useEffect(() => {
-    Promise.all([fetchJson<Conversation[]>("/data/conversations.json"), fetchJson<Store[]>("/data/stores.json")])
-      .then(([conversationsData, storesData]) => {
-        const buyerConversations = getConversationsForBuyer(conversationsData, buyerId);
-        setConversations(buyerConversations);
-        setActiveId(buyerConversations[0]?.id ?? null);
-        setStores(storesData);
-      })
-      .finally(() => setLoading(false));
-  }, [buyerId]);
+    if (!storeParam || isLoading || requestedStore.current === storeParam) return;
+    requestedStore.current = storeParam;
+    if (conversations.some((c) => c.storeId === storeParam)) return;
+    startConversation({ storeId: storeParam })
+      .unwrap()
+      .then((created) => setSelectedId(created.id))
+      .catch(() => {});
+  }, [storeParam, isLoading, conversations, startConversation]);
 
-  useEffect(() => {
-    if (loading) return;
-    const storeId = searchParams.get("store");
-    if (!storeId) return;
+  if (isLoading) return <PageLoader />;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setConversations((prev) => {
-      const existing = prev.find((c) => c.storeId === storeId);
-      if (existing) {
-        setActiveId(existing.id);
-        return prev;
-      }
-      const store = getStoreById(stores, storeId);
-      if (!store) return prev;
-      const draft: Conversation = {
-        id: generateId("conv"),
-        buyerId,
-        buyerName,
-        storeId: store.id,
-        storeName: store.storeName,
-        messages: [],
-      };
-      setActiveId(draft.id);
-      return [draft, ...prev];
-    });
-  }, [searchParams, buyerId, buyerName, stores, loading]);
-
-  if (loading) return <PageLoader />;
-
-  const active = conversations.find((c) => c.id === activeId) ?? null;
-
-  const sendMessage = (text: string) => {
-    if (!active) return;
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === active.id
-          ? { ...c, messages: [...c.messages, { id: generateId("msg"), sender: "buyer", text, timestamp: new Date().toISOString() }] }
-          : c,
-      ),
-    );
-  };
+  const active =
+    conversations.find((c) => c.id === selectedId) ??
+    (storeParam ? conversations.find((c) => c.storeId === storeParam) : conversations[0]) ??
+    null;
 
   return (
     <div className="container-page py-8">
@@ -85,15 +50,17 @@ function BuyerMessagesInner({ buyerId, buyerName }: { buyerId: string; buyerName
             name: c.storeName,
             preview: c.messages.at(-1)?.text ?? "Start the conversation",
           }))}
-          activeId={activeId}
-          onSelect={setActiveId}
+          activeId={active?.id ?? null}
+          onSelect={setSelectedId}
         />
         {active ? (
           <ChatWindow
             title={active.storeName}
             messages={active.messages}
             viewerRole="buyer"
-            onSend={sendMessage}
+            onSend={async (text) => {
+              await sendMessage({ conversationId: active.id, text }).unwrap();
+            }}
             emptyHint="Say hello to get the conversation started."
           />
         ) : (
@@ -108,7 +75,9 @@ function BuyerMessagesInner({ buyerId, buyerName }: { buyerId: string; buyerName
 }
 
 export default function BuyerMessagesPage() {
-  const { role, buyerId, displayName } = useAuth();
+  const { role, hydrated } = useAuth();
+
+  if (!hydrated) return <PageLoader />;
 
   if (role !== "buyer") {
     return (
@@ -126,7 +95,7 @@ export default function BuyerMessagesPage() {
 
   return (
     <Suspense fallback={<PageLoader />}>
-      <BuyerMessagesInner buyerId={buyerId ?? "guest-buyer"} buyerName={displayName} />
+      <BuyerMessagesInner />
     </Suspense>
   );
 }

@@ -117,7 +117,10 @@ export interface Product {
   subcategoryId?: string;
   icon: string;
   galleryCount: number;
-  /** Actual uploaded photo data URLs (seller-listed products only); falls back to the icon placeholder when absent. */
+  /**
+   * Uploaded photo data URLs; falls back to the icon placeholder when absent. List endpoints only
+   * include the first photo (galleryCount has the real total); the single-product endpoint has all.
+   */
   images?: string[];
   tags: Array<"trending" | "new" | "deal" | "sale" | "recent">;
   rating: number;
@@ -135,6 +138,8 @@ export interface OrderItem {
   storeId: string;
   /** Attribute selections made by the buyer, e.g. { Color: "Blue", Size: "Medium" }. */
   variation?: Record<string, string>;
+  /** Courier tracking number, added by the seller once shipped. */
+  trackingNumber?: string;
 }
 
 export type OrderStatus = "processing" | "shipped" | "delivered";
@@ -148,10 +153,23 @@ export interface Order {
   total: number;
   paymentMethod: PaymentMethod;
   billing: Address;
+  orderNote?: string;
   saveAddress: boolean;
   status: OrderStatus;
   createdAt: string;
   trackingSteps: { label: string; done: boolean; date?: string }[];
+}
+
+export type AdminUserRole = "admin" | "seller" | "buyer";
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  name: string;
+  role: AdminUserRole;
+  status: BuyerStatus;
+  createdAt: string;
 }
 
 export interface Buyer {

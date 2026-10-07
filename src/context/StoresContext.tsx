@@ -1,60 +1,55 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef } from "react";
-import { SellerStatus, Store } from "@/types";
-import { fetchJson } from "@/lib/fetchJson";
-import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
-import { addStore as addStoreAction, setStores, updateStoreStatus as updateStoreStatusAction } from "@/Redux/slices/storesSlice";
-
-const STORAGE_KEY = "velora_stores";
+import { createContext, useContext, useMemo } from "react";
+import { skipToken } from "@reduxjs/toolkit/query";
+import { useGetAdminStoresQuery, useGetMyStoreQuery, useGetStoresQuery, useSetStoreStatusMutation } from "@/Redux/api";
+import { useAuth } from "@/context/AuthContext";
+import type { SellerStatus, Store } from "@/types";
 
 interface StoresContextValue {
+  /**
+   * Approved stores for everyone (without private contact / bank details); plus the signed-in
+   * account's own store in any status, and every store (with full details) for admins.
+   */
   stores: Store[];
   loading: boolean;
-  addStore: (store: Store) => void;
-  updateStoreStatus: (storeId: string, status: SellerStatus) => void;
+  /** Admin only. */
+  updateStoreStatus: (storeId: string, status: SellerStatus) => Promise<void>;
 }
 
 const StoresContext = createContext<StoresContextValue | undefined>(undefined);
 
 export function StoresProvider({ children }: { children: React.ReactNode }) {
-  const dispatch = useAppDispatch();
-  const stores = useAppSelector((state) => state.stores.stores);
-  const ready = useAppSelector((state) => state.stores.ready);
-  const initialized = useRef(false);
+  const { role, hydrated, sellerStoreSlug } = useAuth();
+  const publicStores = useGetStoresQuery();
+  const myStore = useGetMyStoreQuery(hydrated && sellerStoreSlug ? undefined : skipToken);
+  const adminStores = useGetAdminStoresQuery(role === "admin" ? undefined : skipToken);
+  const [setStatus] = useSetStoreStatusMutation();
 
-  useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        dispatch(setStores(JSON.parse(stored)));
-        return;
-      }
-    } catch {
-      // ignore, fall through to seeding from the static catalog
+  const stores = useMemo(() => {
+    // Later entries win, so private (owner / admin) versions replace the public ones with the same id.
+    const byId = new Map<string, Store>();
+    for (const store of [...(publicStores.data ?? []), ...(myStore.data ? [myStore.data] : []), ...(adminStores.data ?? [])]) {
+      byId.set(store.id, store);
     }
+    return [...byId.values()];
+  }, [publicStores.data, myStore.data, adminStores.data]);
 
-    fetchJson<Store[]>("/data/stores.json")
-      .then((seed) => dispatch(setStores(seed)))
-      .catch(() => dispatch(setStores([])));
-  }, [dispatch]);
+  const loading =
+    publicStores.isLoading || !hydrated || (Boolean(sellerStoreSlug) && myStore.isLoading) || (role === "admin" && adminStores.isLoading);
 
-  return (
-    <StoresContext.Provider
-      value={{
-        stores,
-        loading: !ready,
-        addStore: (store) => dispatch(addStoreAction(store)),
-        updateStoreStatus: (storeId, status) => dispatch(updateStoreStatusAction({ storeId, status })),
-      }}
-    >
-      {children}
-    </StoresContext.Provider>
+  const value = useMemo<StoresContextValue>(
+    () => ({
+      stores,
+      loading,
+      updateStoreStatus: async (storeId, status) => {
+        await setStatus({ id: storeId, status }).unwrap();
+      },
+    }),
+    [stores, loading, setStatus],
   );
+
+  return <StoresContext.Provider value={value}>{children}</StoresContext.Provider>;
 }
 
 export function useStores() {

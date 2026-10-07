@@ -4,17 +4,21 @@ import { useState } from "react";
 import { StarRating } from "@/components/ui/StarRating";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import { getErrorMessage } from "@/Redux/api";
 
 export function FeedbackForm({
   productTitle,
   onSubmit,
 }: {
   productTitle: string;
-  onSubmit: (rating: number, comment: string) => void;
+  /** Rejects with a displayable error (see getErrorMessage) when the review can't be saved. */
+  onSubmit: (rating: number, comment: string) => Promise<void>;
 }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   if (submitted) {
     return (
@@ -27,10 +31,18 @@ export function FeedbackForm({
 
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        onSubmit(rating, comment);
-        setSubmitted(true);
+        setSubmitting(true);
+        setError("");
+        try {
+          await onSubmit(rating, comment);
+          setSubmitted(true);
+        } catch (err) {
+          setError(getErrorMessage(err));
+        } finally {
+          setSubmitting(false);
+        }
       }}
       className="space-y-4"
     >
@@ -47,8 +59,9 @@ export function FeedbackForm({
         value={comment}
         onChange={(e) => setComment(e.target.value)}
       />
-      <Button type="submit" fullWidth>
-        Submit feedback/review
+      {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+      <Button type="submit" fullWidth disabled={submitting}>
+        {submitting ? "Submitting…" : "Submit feedback/review"}
       </Button>
     </form>
   );

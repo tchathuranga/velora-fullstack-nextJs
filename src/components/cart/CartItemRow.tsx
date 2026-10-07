@@ -14,7 +14,7 @@ export function CartItemRow({ item, product }: { item: CartItem; product?: Produ
   return (
     <div className="flex items-center gap-4 py-4">
       <Link href={product ? `/product/${product.slug}` : "#"} className="h-20 w-20 shrink-0 overflow-hidden rounded-lg">
-        <PlaceholderImage seed={item.productId} icon={item.icon} className="h-full w-full" />
+        <PlaceholderImage seed={item.productId} icon={item.icon} image={product?.images?.[0]} className="h-full w-full" />
       </Link>
       <div className="min-w-0 flex-1">
         <Link
