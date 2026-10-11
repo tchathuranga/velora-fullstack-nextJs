@@ -52,6 +52,8 @@ interface SessionRow {
   username: string;
   email: string;
   name: string;
+  avatar_url: string | null;
+  cover_url: string | null;
   role: "buyer" | "admin";
   status: "active" | "limited";
   store_id: string | null;
@@ -78,7 +80,7 @@ export async function getSession(req: NextRequest): Promise<Session | null> {
 
 export async function loadSession(userId: string): Promise<Session | null> {
   const row = await queryOne<SessionRow>(
-    `SELECT u.id, u.username, u.email, u.name, u.role, u.status,
+    `SELECT u.id, u.username, u.email, u.name, u.avatar_url, u.cover_url, u.role, u.status,
             s.id AS store_id, s.slug AS store_slug, s.status AS store_status,
             CASE WHEN a.user_id IS NULL THEN NULL ELSE jsonb_build_object(
               'fullName', a.full_name, 'street', a.street, 'city', a.city, 'province', a.province,
@@ -98,6 +100,8 @@ export async function loadSession(userId: string): Promise<Session | null> {
     username: row.username,
     name: row.name,
     email: row.email,
+    avatarUrl: row.avatar_url ?? undefined,
+    coverUrl: row.cover_url ?? undefined,
     buyerId: row.role === "buyer" ? row.id : undefined,
     storeSlug: isSeller ? (row.store_slug ?? undefined) : undefined,
     storeId: isSeller ? row.store_id : null,

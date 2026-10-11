@@ -8,6 +8,9 @@ export interface AuthUser {
   username: string;
   name: string;
   email: string;
+  /** Cloudinary URLs for the account's profile picture and cover photo. */
+  avatarUrl?: string;
+  coverUrl?: string;
   buyerId?: string;
   /** Set only while the account's store is approved. */
   storeSlug?: string;

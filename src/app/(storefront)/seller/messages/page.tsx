@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useUnreadMessages } from "@/lib/useUnreadMessages";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { useAuth } from "@/context/AuthContext";
 import { useGetConversationsQuery, useSendMessageMutation } from "@/Redux/api";
@@ -17,12 +18,19 @@ export default function SellerMessagesPage() {
   });
   const [sendMessage] = useSendMessageMutation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  if (!hydrated || isLoading) return <PageLoader />;
+  const { markSeen } = useUnreadMessages();
 
   // A buyer who opened the chat but hasn't written yet isn't worth showing.
   const conversations = (data ?? []).filter((c) => c.messages.length > 0);
   const active = conversations.find((c) => c.id === selectedId) ?? conversations[0] ?? null;
+  const activeId = active?.id;
+  const latest = active?.messages.at(-1)?.timestamp;
+
+  useEffect(() => {
+    if (activeId && latest) markSeen(activeId, latest);
+  }, [activeId, latest, markSeen]);
+
+  if (!hydrated || isLoading) return <PageLoader />;
 
   return (
     <div className="container-page py-8">

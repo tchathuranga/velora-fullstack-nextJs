@@ -38,6 +38,8 @@ export interface StoreRow {
   bank_details_optional: BankDetails | null;
   cover_color: string;
   profile_color: string;
+  cover_image_url: string | null;
+  profile_image_url: string | null;
   created_at: Date;
   active_listings: number;
   unsold_listings: number;
@@ -48,7 +50,7 @@ export interface StoreRow {
 /** Select list shared by every store query; stats are computed live from products / order_items. */
 export const STORE_SELECT = `
   s.id, s.slug, s.store_name, s.business_name, s.full_name, s.address, s.telephone, s.email, s.about_store,
-  s.status, s.bank_details, s.bank_details_optional, s.cover_color, s.profile_color, s.created_at,
+  s.status, s.bank_details, s.bank_details_optional, s.cover_color, s.profile_color, s.cover_image_url, s.profile_image_url, s.created_at,
   (SELECT count(*) FROM products p WHERE p.store_id = s.id AND p.quantity > 0) AS active_listings,
   (SELECT count(*) FROM products p WHERE p.store_id = s.id AND p.quantity = 0) AS unsold_listings,
   (SELECT count(DISTINCT oi.order_id) FROM order_items oi WHERE oi.store_id = s.id) AS orders,
@@ -69,6 +71,8 @@ export function toStore(row: StoreRow, includePrivate: boolean): Store {
     status: row.status,
     coverColor: row.cover_color,
     profileColor: row.profile_color,
+    ...(row.cover_image_url ? { coverImage: row.cover_image_url } : {}),
+    ...(row.profile_image_url ? { profileImage: row.profile_image_url } : {}),
     stats: {
       activeListings: row.active_listings,
       orders: row.orders,

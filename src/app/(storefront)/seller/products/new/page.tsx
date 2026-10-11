@@ -28,7 +28,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useProducts } from "@/context/ProductsContext";
 import { useCategories } from "@/context/CategoriesContext";
 import { getCategoryById } from "@/lib/data/categories";
-import { fileToDataUrl } from "@/lib/image";
+import { uploadImage } from "@/lib/upload";
 import { getErrorMessage } from "@/Redux/api";
 import { VariationAttribute, PaymentMethod } from "@/types";
 
@@ -80,8 +80,8 @@ export default function NewProductPage() {
     setSubmitting(true);
     setSubmitError("");
     try {
-      const images = await Promise.all(photoFiles.map((file) => fileToDataUrl(file))).catch(() => {
-        throw new Error("One of the photos couldn't be processed. Please try different images.");
+      const images = await Promise.all(photoFiles.map((file) => uploadImage(file, "product"))).catch((err) => {
+        throw new Error(err instanceof Error ? err.message : "One of the photos couldn't be uploaded. Please try again.");
       });
 
       await addProduct({

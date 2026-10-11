@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isOwnCloudinaryUrl } from "./cloudinary";
 
 const text = (max = 200) => z.string().trim().max(max);
 const required = (label: string, max = 200) => z.string().trim().min(1, `${label} is required.`).max(max);
@@ -67,7 +68,22 @@ export const bannerUpdateSchema = z.object({
 });
 export const bannerMoveSchema = z.object({ direction: z.enum(["up", "down"]) });
 
-const dataUrl = z.string().max(3_000_000).startsWith("data:image/", "Photos must be images.");
+const imageUrl = z
+  .string()
+  .max(500)
+  .refine(isOwnCloudinaryUrl, "Images must be uploaded through the site.");
+
+export const uploadSignSchema = z.object({
+  kind: z.enum(["avatar", "cover", "store-avatar", "store-cover", "product"]),
+});
+export const profileImagesSchema = z.object({
+  avatarUrl: imageUrl.nullable().optional(),
+  coverUrl: imageUrl.nullable().optional(),
+});
+export const storeImagesSchema = z.object({
+  profileImage: imageUrl.nullable().optional(),
+  coverImage: imageUrl.nullable().optional(),
+});
 
 export const createProductSchema = z.object({
   title: required("Product title", 100),
@@ -87,7 +103,7 @@ export const createProductSchema = z.object({
   deliveryFee: z.number().min(0).max(1_000_000).default(0),
   paymentMethods: z.array(paymentMethodSchema).min(1, "Select at least one payment method."),
   location: required("Store location", 200),
-  images: z.array(dataUrl).max(13).default([]),
+  images: z.array(imageUrl).max(13).default([]),
   variations: z
     .object({
       attributes: z.array(z.object({ name: text(60), options: z.array(text(60)).max(50) })).max(5),

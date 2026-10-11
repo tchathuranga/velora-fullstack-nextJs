@@ -45,7 +45,16 @@ export default function SellerOrdersPage() {
                   Order ID: {order.id}
                 </Link>
                 <div className="mt-3 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                  <p className="text-sm text-slate-800">{item.title}</p>
+                  {product ? (
+                    <Link
+                      href={`/product/${product.slug}`}
+                      className="text-sm text-slate-800 hover:text-[var(--color-primary)] hover:underline"
+                    >
+                      {item.title}
+                    </Link>
+                  ) : (
+                    <p className="text-sm text-slate-800">{item.title}</p>
+                  )}
                   <TrackingNumberEditor orderId={order.id} productId={item.productId} trackingNumber={item.trackingNumber} />
                 </div>
               </li>

@@ -51,6 +51,12 @@ CREATE TABLE IF NOT EXISTS stores (
   created_at            timestamptz NOT NULL DEFAULT now()
 );
 
+-- Profile pictures / cover photos live in Cloudinary; only their URLs are stored.
+ALTER TABLE users  ADD COLUMN IF NOT EXISTS avatar_url        text;
+ALTER TABLE users  ADD COLUMN IF NOT EXISTS cover_url         text;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS profile_image_url text;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS cover_image_url   text;
+
 -- ───────────────────────── Catalog ─────────────────────────
 CREATE TABLE IF NOT EXISTS categories (
   id       uuid PRIMARY KEY DEFAULT gen_random_uuid(),

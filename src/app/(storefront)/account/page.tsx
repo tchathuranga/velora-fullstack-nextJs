@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { skipToken } from "@reduxjs/toolkit/query";
+import { ImageUploadButton } from "@/components/ui/ImageUploadButton";
 import { User, LogIn, Store } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useProducts } from "@/context/ProductsContext";
-import { useGetOrdersQuery } from "@/Redux/api";
+import { useGetOrdersQuery, useUpdateProfileImagesMutation } from "@/Redux/api";
 import { DeliveryAddressCard } from "@/components/account/DeliveryAddressCard";
 import { PurchaseHistoryItem } from "@/components/account/PurchaseHistoryItem";
 import { RecentlyViewedSection } from "@/components/home/RecentlyViewedSection";
@@ -13,7 +15,9 @@ import { Button } from "@/components/ui/Button";
 import { PageLoader } from "@/components/ui/PageLoader";
 
 export default function AccountPage() {
-  const { role, hydrated, displayName, email, sellerStoreSlug, address, saveAddress } = useAuth();
+  const { role, hydrated, displayName, email, avatarUrl, coverUrl, sellerStoreSlug, address, saveAddress } = useAuth();
+  const [updateProfileImages] = useUpdateProfileImagesMutation();
+  const [imageError, setImageError] = useState("");
   const { products, loading: productsLoading } = useProducts();
   const { data: orders = [], isLoading: ordersLoading } = useGetOrdersQuery(role === "buyer" ? undefined : skipToken);
 
@@ -48,16 +52,42 @@ export default function AccountPage() {
   return (
     <div className="container-page py-8">
       <div className="card overflow-hidden">
-        <div className="h-28 bg-gradient-to-br from-indigo-500 to-violet-600 sm:h-36" />
+        <div
+          className="relative h-28 bg-gradient-to-br from-indigo-500 to-violet-600 bg-cover bg-center sm:h-36"
+          style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
+        >
+          <ImageUploadButton
+            kind="cover"
+            label={coverUrl ? "Change cover photo" : "Add cover photo"}
+            className="absolute right-3 top-3"
+            onError={setImageError}
+            onUploaded={(url) => updateProfileImages({ coverUrl: url }).unwrap()}
+          />
+        </div>
         <div className="flex items-center gap-4 px-6 pb-6">
-          <div className="-mt-10 flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-[var(--color-primary)] text-white shadow-md">
-            <User size={32} />
+          <div className="relative -mt-10 h-20 w-20 shrink-0">
+            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[var(--color-primary)] text-white shadow-md">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+              ) : (
+                <User size={32} />
+              )}
+            </div>
+            <ImageUploadButton
+              kind="avatar"
+              label={avatarUrl ? "Change profile picture" : "Add profile picture"}
+              className="absolute -bottom-1 -right-1 !h-7 !w-7 border border-[var(--color-border)]"
+              onError={setImageError}
+              onUploaded={(url) => updateProfileImages({ avatarUrl: url }).unwrap()}
+            />
           </div>
           <div className="pt-3">
             <h1 className="text-xl font-bold text-slate-900">{displayName}</h1>
             <p className="text-sm text-[var(--color-muted)]">{email}</p>
           </div>
         </div>
+        {imageError && <p className="px-6 pb-4 text-sm text-[var(--color-danger)]">{imageError}</p>}
       </div>
 
       {sellerStoreSlug && (
