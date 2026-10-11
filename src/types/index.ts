@@ -47,6 +47,9 @@ export interface Store {
   stats: StoreStats;
   coverColor: string;
   profileColor: string;
+  /** Uploaded images (Cloudinary); the colours above are the fallback. */
+  coverImage?: string;
+  profileImage?: string;
 }
 
 export interface SpecEntry {

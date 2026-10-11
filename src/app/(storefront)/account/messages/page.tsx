@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { LogIn } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useUnreadMessages } from "@/lib/useUnreadMessages";
 import { useGetConversationsQuery, useSendMessageMutation, useStartConversationMutation } from "@/Redux/api";
 import { ConversationList } from "@/components/messages/ConversationList";
 import { ChatWindow } from "@/components/messages/ChatWindow";
@@ -21,6 +22,7 @@ function BuyerMessagesInner() {
   const [sendMessage] = useSendMessageMutation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const requestedStore = useRef<string | null>(null);
+  const { markSeen } = useUnreadMessages();
 
   // Arriving via "Contact seller": create the conversation with that store if it doesn't exist yet.
   useEffect(() => {
@@ -33,12 +35,18 @@ function BuyerMessagesInner() {
       .catch(() => {});
   }, [storeParam, isLoading, conversations, startConversation]);
 
-  if (isLoading) return <PageLoader />;
-
   const active =
     conversations.find((c) => c.id === selectedId) ??
     (storeParam ? conversations.find((c) => c.storeId === storeParam) : conversations[0]) ??
     null;
+  const activeId = active?.id;
+  const latest = active?.messages.at(-1)?.timestamp;
+
+  useEffect(() => {
+    if (activeId && latest) markSeen(activeId, latest);
+  }, [activeId, latest, markSeen]);
+
+  if (isLoading) return <PageLoader />;
 
   return (
     <div className="container-page py-8">

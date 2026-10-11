@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Order, OrderItem, Product } from "@/types";
 import { PlaceholderImage } from "@/components/ui/PlaceholderImage";
 import { Modal } from "@/components/ui/Modal";
-import { TrackingSteps } from "@/components/account/TrackingSteps";
 import { FeedbackForm } from "@/components/feedback/FeedbackForm";
 import { useSubmitFeedbackMutation } from "@/Redux/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -54,7 +53,14 @@ export function PurchaseHistoryItem({
       </div>
 
       <Modal open={trackingOpen} onClose={() => setTrackingOpen(false)} title="Tracking information">
-        <TrackingSteps order={order} />
+        <div className="rounded-lg bg-slate-50 p-3 text-sm">
+          <span className="text-[var(--color-muted)]">Tracking number: </span>
+          {item.trackingNumber ? (
+            <span className="font-semibold text-slate-900">{item.trackingNumber}</span>
+          ) : (
+            <span className="text-[var(--color-muted)]">Not available yet</span>
+          )}
+        </div>
       </Modal>
 
       <Modal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} title="Leave feedback">

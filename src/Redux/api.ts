@@ -164,12 +164,26 @@ export const api = createApi({
       },
     }),
 
+    updateProfileImages: build.mutation<AuthUser | null, { avatarUrl?: string | null; coverUrl?: string | null }>({
+      query: (body) => ({ url: "/account/profile", method: "PATCH", body }),
+      transformResponse: (res: SessionResponse) => res.user,
+      onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+        const { data } = await queryFulfilled;
+        dispatch(api.util.upsertQueryData("getSession", undefined, data));
+      },
+    }),
+
     // ───────────── Stores ─────────────
     getStores: build.query<Store[], void>({ query: () => "/stores", providesTags: ["Stores"] }),
     getMyStore: build.query<Store | null, void>({
       query: () => "/stores/mine",
       transformResponse: (res: { store: Store | null }) => res.store,
       providesTags: ["MyStore"],
+    }),
+    updateStoreImages: build.mutation<Store | null, { profileImage?: string | null; coverImage?: string | null }>({
+      query: (body) => ({ url: "/stores/mine", method: "PATCH", body }),
+      transformResponse: (res: { store: Store | null }) => res.store,
+      invalidatesTags: ["MyStore", "Stores"],
     }),
     createStore: build.mutation<Store, CreateStoreInput>({
       query: (body) => ({ url: "/stores", method: "POST", body }),
@@ -379,6 +393,8 @@ export const {
   useGetSellerOrderQuery,
   useSetTrackingNumberMutation,
   useGetConversationsQuery,
+  useUpdateProfileImagesMutation,
+  useUpdateStoreImagesMutation,
   useStartConversationMutation,
   useSendMessageMutation,
   useGetWishlistQuery,

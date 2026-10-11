@@ -22,6 +22,8 @@ interface AuthContextValue {
   username: string | null;
   displayName: string;
   email: string | null;
+  avatarUrl: string | null;
+  coverUrl: string | null;
   /** Set only while the account's store is approved (i.e. signed in as a seller). */
   storeSlug: string | null;
   buyerId: string | null;
@@ -57,6 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: user?.username ?? null,
       displayName: user?.name ?? "Guest",
       email: user?.email ?? null,
+      avatarUrl: user?.avatarUrl ?? null,
+      coverUrl: user?.coverUrl ?? null,
       storeSlug: user?.storeSlug ?? null,
       buyerId: user?.buyerId ?? null,
       sellerStoreSlug: user?.sellerStoreSlug ?? null,

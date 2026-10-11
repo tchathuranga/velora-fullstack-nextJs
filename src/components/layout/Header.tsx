@@ -3,6 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import clsx from "clsx";
+import { useUnreadMessages } from "@/lib/useUnreadMessages";
+import { formatDate } from "@/lib/utils";
 import {
   Search,
   ShoppingCart,
@@ -28,13 +32,28 @@ import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
 import { setMobileOpen, setQuery } from "@/Redux/slices/headerSlice";
 
 export function Header() {
-  const { role, logout: authLogout, displayName, storeSlug, sellerStoreSlug } = useAuth();
+  const { role, logout: authLogout, displayName, avatarUrl, storeSlug, sellerStoreSlug } = useAuth();
   const { itemCount } = useCart();
   const { productIds } = useWishlist();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const mobileOpen = useAppSelector((state) => state.header.mobileOpen);
   const query = useAppSelector((state) => state.header.query);
+
+  const unread = useUnreadMessages();
+  const [toast, setToast] = useState<{ name: string; text: string } | null>(null);
+  const prevTotal = useRef<number | null>(null);
+
+  // Pop a toast when the unread count rises (not on first load).
+  useEffect(() => {
+    const prev = prevTotal.current;
+    prevTotal.current = unread.total;
+    if (prev === null || unread.total <= prev || !unread.items.length) return;
+    const latest = unread.items[unread.items.length - 1];
+    setToast({ name: latest.name, text: latest.text });
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [unread.total, unread.items]);
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,12 +110,35 @@ export function Header() {
             trigger={() => (
               <span className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
                 <Bell size={20} />
+                <CountBadge count={unread.total} />
               </span>
             )}
           >
-            {() => (
-              <div className="px-4 py-3 text-sm text-slate-500">You&apos;re all caught up — no new notifications.</div>
-            )}
+            {(close) =>
+              unread.notifications.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-slate-500">No notifications yet.</div>
+              ) : (
+                <ul className="max-h-96 w-72 max-w-[80vw] divide-y divide-[var(--color-border)] overflow-y-auto">
+                  {unread.notifications.map((n) => (
+                    <li key={n.id}>
+                      <Link
+                        href={unread.messagesHref}
+                        onClick={close}
+                        className={clsx("block px-4 py-2 text-sm hover:bg-slate-50", n.unread && "bg-[var(--color-primary-light)]")}
+                      >
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className={clsx("truncate text-slate-800", n.unread ? "font-semibold" : "font-medium")}>
+                            New message from {n.name}
+                          </span>
+                          <span className="shrink-0 text-xs text-slate-400">{formatDate(n.timestamp)}</span>
+                        </span>
+                        <span className="block truncate text-slate-500">{n.text}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
           </Dropdown>
 
           {role === "guest" ? (
@@ -113,10 +155,18 @@ export function Header() {
             <Dropdown
               trigger={() => (
                 <span className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary)]">
-                    <User size={16} />
+                  <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary)]">
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <User size={16} />
+                    )}
                   </span>
                   <span className="hidden md:inline">{displayName}</span>
+                  <span className="relative -ml-1 h-0 w-0">
+                    <CountBadge count={unread.total} />
+                  </span>
                 </span>
               )}
             >
@@ -129,6 +179,7 @@ export function Header() {
                       </DropdownLink>
                       <DropdownLink href="/account/messages" icon={<MessageCircle size={16} />} onClick={close}>
                         Messages
+                        <InlineCount count={unread.total} />
                       </DropdownLink>
                       {sellerStoreSlug && (
                         <DropdownLink href="/sell/pending" icon={<ShieldCheck size={16} />} onClick={close}>
@@ -150,6 +201,7 @@ export function Header() {
                       </DropdownLink>
                       <DropdownLink href="/seller/messages" icon={<MessageCircle size={16} />} onClick={close}>
                         Messages
+                        <InlineCount count={unread.total} />
                       </DropdownLink>
                     </>
                   )}
@@ -189,6 +241,21 @@ export function Header() {
           </button>
         </div>
       </div>
+
+      {toast && (
+        <Link
+          href={unread.messagesHref}
+          onClick={() => setToast(null)}
+          role="status"
+          className="fixed right-4 top-20 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--color-border)] bg-white p-3 text-sm shadow-lg"
+        >
+          <span className="flex items-center gap-2 font-semibold text-slate-800">
+            <MessageCircle size={16} className="text-[var(--color-primary)]" />
+            New message from {toast.name}
+          </span>
+          <span className="mt-1 block truncate text-slate-500">{toast.text}</span>
+        </Link>
+      )}
 
       {mobileOpen && (
         <div className="border-t border-[var(--color-border)] bg-white sm:hidden">
@@ -243,6 +310,24 @@ function IconLink({
         </span>
       )}
     </Link>
+  );
+}
+
+function CountBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-accent)] px-1 text-[10px] font-semibold text-white">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+function InlineCount({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-accent)] px-1.5 text-xs font-semibold text-white">
+      {count > 99 ? "99+" : count}
+    </span>
   );
 }
 
