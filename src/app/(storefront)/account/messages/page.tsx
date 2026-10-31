@@ -7,6 +7,7 @@ import { LogIn } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useUnreadMessages } from "@/lib/useUnreadMessages";
 import { useGetConversationsQuery, useSendMessageMutation, useStartConversationMutation } from "@/Redux/api";
+import { useProducts } from "@/context/ProductsContext";
 import { ConversationList } from "@/components/messages/ConversationList";
 import { ChatWindow } from "@/components/messages/ChatWindow";
 import { Button } from "@/components/ui/Button";
@@ -14,9 +15,18 @@ import { PageLoader } from "@/components/ui/PageLoader";
 
 const POLL_MS = 15_000;
 
+const lastPreview = (m: { text: string; images: string[] } | undefined) =>
+  m ? m.text || (m.images.length ? "📷 Photo" : "") : undefined;
+
 function BuyerMessagesInner() {
   const searchParams = useSearchParams();
   const storeParam = searchParams.get("store");
+  const conversationParam = searchParams.get("c");
+  const productParam = searchParams.get("product");
+  const orderParam = searchParams.get("order");
+  const { products } = useProducts();
+  // The listing / order the buyer came from ("Contact seller", "Message seller"): attached to their next message.
+  const [contextDismissed, setContextDismissed] = useState(false);
   const { data: conversations = [], isLoading } = useGetConversationsQuery("buyer", { pollingInterval: POLL_MS });
   const [startConversation] = useStartConversationMutation();
   const [sendMessage] = useSendMessageMutation();
@@ -37,8 +47,14 @@ function BuyerMessagesInner() {
 
   const active =
     conversations.find((c) => c.id === selectedId) ??
+    conversations.find((c) => c.id === conversationParam) ??
     (storeParam ? conversations.find((c) => c.storeId === storeParam) : conversations[0]) ??
     null;
+  const contextProduct = productParam ? products.find((p) => p.id === productParam) : undefined;
+  const contextLabel = [contextProduct?.title ?? (productParam ? "this listing" : null), orderParam ? `Order ${orderParam}` : null]
+    .filter(Boolean)
+    .join(" · ");
+  const showContext = !contextDismissed && Boolean(contextLabel) && active?.storeId === storeParam;
   const activeId = active?.id;
   const latest = active?.messages.at(-1)?.timestamp;
 
@@ -56,7 +72,7 @@ function BuyerMessagesInner() {
           conversations={conversations.map((c) => ({
             id: c.id,
             name: c.storeName,
-            preview: c.messages.at(-1)?.text ?? "Start the conversation",
+            preview: lastPreview(c.messages.at(-1)) ?? "Start the conversation",
           }))}
           activeId={active?.id ?? null}
           onSelect={setSelectedId}
@@ -66,9 +82,16 @@ function BuyerMessagesInner() {
             title={active.storeName}
             messages={active.messages}
             viewerRole="buyer"
-            onSend={async (text) => {
-              await sendMessage({ conversationId: active.id, text }).unwrap();
+            onSend={async ({ text, images }) => {
+              await sendMessage({
+                conversationId: active.id,
+                text,
+                images,
+                ...(showContext ? { productId: productParam ?? undefined, orderId: orderParam ?? undefined } : {}),
+              }).unwrap();
             }}
+            context={showContext ? { label: contextLabel } : undefined}
+            onContextSent={() => setContextDismissed(true)}
             emptyHint="Say hello to get the conversation started."
           />
         ) : (

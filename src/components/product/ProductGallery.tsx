@@ -10,14 +10,20 @@ export function ProductGallery({
   count,
   title,
   images,
+  overrideImage,
 }: {
   productId: string;
   icon: string;
   count: number;
   title: string;
   images?: string[];
+  /** The selected variation's photo; shown as the large image until a thumbnail is clicked. */
+  overrideImage?: string;
 }) {
-  const [active, setActive] = useState(0);
+  const [picked, setPicked] = useState<{ index: number; override?: string } | null>(null);
+  // A thumbnail the shopper picked wins, unless they have since chosen a different variation.
+  const active = picked && picked.override === overrideImage ? picked.index : -1;
+  const setActive = (index: number) => setPicked({ index, override: overrideImage });
   const thumbs = Array.from({ length: Math.max(count, 1) });
 
   return (
@@ -26,7 +32,7 @@ export function ProductGallery({
         <PlaceholderImage
           seed={`${productId}-${active}`}
           icon={icon}
-          image={images?.[active]}
+          image={active === -1 ? (overrideImage ?? images?.[0]) : images?.[active]}
           label={title}
           className="h-full w-full"
         />
@@ -40,7 +46,7 @@ export function ProductGallery({
             aria-label={`View image ${i + 1}`}
             className={clsx(
               "h-14 w-14 overflow-hidden rounded-lg border-2 transition",
-              active === i ? "border-[var(--color-primary)]" : "border-transparent",
+              (active === -1 ? (!overrideImage && i === 0) : active === i) ? "border-[var(--color-primary)]" : "border-transparent",
             )}
           >
             <PlaceholderImage seed={`${productId}-${i}`} icon={icon} image={images?.[i]} className="h-full w-full" />

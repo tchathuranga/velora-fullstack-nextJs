@@ -32,7 +32,7 @@ export const POST = route(async (req) => {
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (product_id, buyer_id) DO UPDATE SET rating = $4, comment = $5, buyer_name = $3
      RETURNING id, product_id, buyer_name, rating, comment, created_at`,
-    [productId, session.userId, session.name, rating, comment],
+    [productId, session.userId, session.username, rating, comment],
   );
   return NextResponse.json(toFeedback(row!), { status: 201 });
 });

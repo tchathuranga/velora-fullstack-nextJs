@@ -49,7 +49,10 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const user = await login(identifier.trim(), password);
-      router.push(user.role === "seller" ? `/store/${user.storeSlug}` : "/account");
+      // Honour ?next= (e.g. back to checkout), but only for paths on this site.
+      const next = new URLSearchParams(window.location.search).get("next");
+      const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+      router.push(safeNext ?? (user.role === "seller" ? `/store/${user.storeSlug}` : "/account"));
     } catch (err) {
       setError(getErrorMessage(err, "Invalid username or password. Please check your credentials and try again."));
     } finally {
@@ -116,7 +119,16 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-[var(--color-muted)]">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="link-blue font-medium">
+          <Link
+            href="/signup"
+            onClick={(e) => {
+              // Carry ?next= (e.g. back to checkout) over to the sign-up page.
+              if (!window.location.search) return;
+              e.preventDefault();
+              router.push(`/signup${window.location.search}`);
+            }}
+            className="link-blue font-medium"
+          >
             Sign up
           </Link>
         </p>

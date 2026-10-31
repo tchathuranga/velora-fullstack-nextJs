@@ -51,8 +51,8 @@ export interface StoreRow {
 export const STORE_SELECT = `
   s.id, s.slug, s.store_name, s.business_name, s.full_name, s.address, s.telephone, s.email, s.about_store,
   s.status, s.bank_details, s.bank_details_optional, s.cover_color, s.profile_color, s.cover_image_url, s.profile_image_url, s.created_at,
-  (SELECT count(*) FROM products p WHERE p.store_id = s.id AND p.quantity > 0) AS active_listings,
-  (SELECT count(*) FROM products p WHERE p.store_id = s.id AND p.quantity = 0) AS unsold_listings,
+  (SELECT count(*) FROM products p WHERE p.store_id = s.id AND p.status = 'active') AS active_listings,
+  (SELECT count(*) FROM products p WHERE p.store_id = s.id AND p.status = 'ended') AS unsold_listings,
   (SELECT count(DISTINCT oi.order_id) FROM order_items oi WHERE oi.store_id = s.id) AS orders,
   (SELECT COALESCE(sum(oi.price * oi.quantity), 0) FROM order_items oi WHERE oi.store_id = s.id) AS order_amount`;
 
@@ -125,6 +125,11 @@ export const toBanner = (row: BannerRow): Banner => ({
 // ───────────────────────── Products ─────────────────────────
 export interface ProductRow {
   id: string;
+  status: Product["status"];
+  condition: string | null;
+  extra_delivery_fee: number;
+  returns_accepted: boolean;
+  sold_total: number;
   slug: string;
   store_id: string;
   category_id: string | null;
@@ -161,7 +166,7 @@ export interface ProductRow {
  */
 export function productSelect(full: boolean): string {
   return `
-  p.id, p.slug, p.store_id, p.category_id, p.subcategory_id, p.title, p.price, p.quantity, p.brand, p.size, p.color,
+  p.id, p.status, p.condition, p.extra_delivery_fee, p.returns_accepted, p.slug, p.store_id, p.category_id, p.subcategory_id, p.title, p.price, p.quantity, p.brand, p.size, p.color,
   p.package_include, p.custom_specs, p.description, p.handling_time, p.delivery_time, p.delivery_fee, p.free_delivery,
   p.payment_methods, p.location, p.icon, p.tags, p.variations, p.created_at,
   ${full ? "p.images" : "CASE WHEN jsonb_array_length(p.images) > 0 THEN jsonb_build_array(p.images->0) ELSE '[]'::jsonb END AS images"},
@@ -169,7 +174,8 @@ export function productSelect(full: boolean): string {
   COALESCE((SELECT round(avg(f.rating), 1) FROM feedback f WHERE f.product_id = p.id), 0) AS rating,
   (SELECT count(*) FROM feedback f WHERE f.product_id = p.id) AS review_count,
   COALESCE((SELECT sum(oi.quantity) FROM order_items oi JOIN orders o ON o.id = oi.order_id
-             WHERE oi.product_id = p.id AND o.created_at > now() - interval '30 days'), 0) AS sold_30d`;
+             WHERE oi.product_id = p.id AND o.created_at > now() - interval '30 days'), 0) AS sold_30d,
+  COALESCE((SELECT sum(oi.quantity) FROM order_items oi WHERE oi.product_id = p.id), 0) AS sold_total`;
 }
 
 const NEW_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -183,12 +189,14 @@ export function toProduct(row: ProductRow): Product {
 
   return {
     id: row.id,
+    status: row.status,
     slug: row.slug,
     title: row.title,
     storeId: row.store_id,
     price: row.price,
     quantity: row.quantity,
     brand: row.brand ?? undefined,
+    condition: row.condition ?? undefined,
     size: row.size ?? undefined,
     color: row.color ?? undefined,
     packageInclude: row.package_include ?? undefined,
@@ -197,7 +205,10 @@ export function toProduct(row: ProductRow): Product {
     handlingTime: row.handling_time,
     deliveryTime: row.delivery_time,
     deliveryFee: row.free_delivery ? 0 : row.delivery_fee,
+    extraDeliveryFee: row.free_delivery ? 0 : row.extra_delivery_fee,
     freeDelivery: row.free_delivery,
+    returnsAccepted: row.returns_accepted,
+    soldCount: Number(row.sold_total),
     paymentMethods: row.payment_methods,
     location: row.location,
     categoryId: row.category_id ?? undefined,
@@ -217,6 +228,7 @@ export function toProduct(row: ProductRow): Product {
 export interface OrderRow {
   id: string;
   buyer_name: string;
+  buyer_username: string | null;
   subtotal: number;
   delivery_cost: number;
   total: number;
@@ -239,23 +251,34 @@ export interface OrderItemRow {
   quantity: number;
   icon: string;
   variation: Record<string, string> | null;
+  variation_id: string | null;
+  shipping_cost: number;
   tracking_number: string | null;
+  courier_name: string | null;
+  ship_by: string | null;
+  id: string;
 }
 
 export function toOrder(row: OrderRow, items: OrderItemRow[]): Order {
   return {
     id: row.id,
     buyerName: row.buyer_name,
+    buyerUsername: row.buyer_username ?? "guest",
     items: items.map(
       (i): OrderItem => ({
+        id: i.id,
         productId: i.product_id ?? "",
         title: i.title,
         price: i.price,
         quantity: i.quantity,
         icon: i.icon,
         storeId: i.store_id,
+        shippingCost: i.shipping_cost,
         ...(i.variation ? { variation: i.variation } : {}),
+        ...(i.variation_id ? { variationId: i.variation_id } : {}),
         ...(i.tracking_number ? { trackingNumber: i.tracking_number } : {}),
+        ...(i.courier_name ? { courierName: i.courier_name } : {}),
+        ...(i.ship_by ? { shipBy: i.ship_by } : {}),
       }),
     ),
     subtotal: row.subtotal,
@@ -274,6 +297,7 @@ export function toOrder(row: OrderRow, items: OrderItemRow[]): Order {
 // ───────────────────────── Misc ─────────────────────────
 export interface BuyerRow {
   id: string;
+  username: string;
   name: string;
   email: string;
   status: Buyer["status"];
@@ -283,6 +307,7 @@ export interface BuyerRow {
 export function toBuyer(row: BuyerRow): Buyer {
   return {
     id: row.id,
+    username: row.username,
     name: row.name,
     email: row.email,
     registered: true,
@@ -336,14 +361,20 @@ export interface ConversationRow {
   buyer_name: string;
   store_id: string;
   store_name: string;
-  messages: { id: string; sender: "buyer" | "seller"; text: string; timestamp: string }[];
+  messages: Message[];
 }
 
 export const CONVERSATION_SELECT = `
-  c.id, c.buyer_id, u.name AS buyer_name, c.store_id, s.store_name,
-  COALESCE((SELECT json_agg(json_build_object('id', m.id, 'sender', m.sender, 'text', m.text, 'timestamp', m.created_at)
-                            ORDER BY m.created_at)
-              FROM messages m WHERE m.conversation_id = c.id), '[]'::json) AS messages
+  c.id, c.buyer_id, u.username AS buyer_name, c.store_id, s.store_name,
+  COALESCE((SELECT jsonb_agg(
+                     jsonb_build_object('id', m.id, 'sender', m.sender, 'text', m.text, 'images', m.images, 'timestamp', m.created_at)
+                     || CASE WHEN mp.id IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('product', jsonb_build_object(
+                          'id', mp.id, 'slug', mp.slug, 'title', mp.title,
+                          'image', CASE WHEN jsonb_array_length(mp.images) > 0 THEN mp.images->>0 END)) END
+                     || CASE WHEN m.order_id IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('order', jsonb_build_object('id', m.order_id)) END
+                   ORDER BY m.created_at)
+              FROM messages m LEFT JOIN products mp ON mp.id = m.product_id
+             WHERE m.conversation_id = c.id), '[]'::jsonb) AS messages
   FROM conversations c
   JOIN users u ON u.id = c.buyer_id
   JOIN stores s ON s.id = c.store_id`;

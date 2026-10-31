@@ -9,12 +9,16 @@ import { ImageDropzone } from "@/components/ui/ImageDropzone";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useAuth } from "@/context/AuthContext";
 import { getErrorMessage, useCreateStoreMutation } from "@/Redux/api";
+import { uploadImage } from "@/lib/upload";
 
 export default function SellRegisterPage() {
   const router = useRouter();
   const { hydrated, username, sellerStoreSlug } = useAuth();
   const [createStore, { isLoading: submitting }] = useCreateStoreMutation();
   const [error, setError] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [profileFile, setProfileFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -32,7 +36,16 @@ export default function SellRegisterPage() {
     const field = (name: string) => ((data.get(name) as string) ?? "").trim();
 
     try {
+      // Upload the chosen photos first so they are saved with the store and show on its profile.
+      setUploading(true);
+      const [coverImage, profileImage] = await Promise.all([
+        coverFile ? uploadImage(coverFile, "store-cover") : undefined,
+        profileFile ? uploadImage(profileFile, "store-avatar") : undefined,
+      ]).finally(() => setUploading(false));
+
       await createStore({
+        ...(coverImage ? { coverImage } : {}),
+        ...(profileImage ? { profileImage } : {}),
         businessName: field("businessName"),
         fullName: field("fullName"),
         address: field("address"),
@@ -62,7 +75,7 @@ export default function SellRegisterPage() {
       // The store starts "under review" until an admin approves it (/admin/sellers).
       router.push("/sell/pending");
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(err instanceof Error && !("status" in err) ? err.message : getErrorMessage(err));
     }
   };
 
@@ -90,11 +103,11 @@ export default function SellRegisterPage() {
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <span className="mb-1.5 block text-sm font-medium text-slate-700">Cover photo</span>
-              <ImageDropzone label="Upload cover photo" className="aspect-video" />
+              <ImageDropzone label="Upload cover photo" className="aspect-video" onFileSelect={setCoverFile} />
             </div>
             <div>
               <span className="mb-1.5 block text-sm font-medium text-slate-700">Profile photo</span>
-              <ImageDropzone label="Upload profile photo" className="mx-auto max-w-40" />
+              <ImageDropzone label="Upload profile photo" className="mx-auto max-w-40" onFileSelect={setProfileFile} />
             </div>
           </div>
         </section>
@@ -131,8 +144,8 @@ export default function SellRegisterPage() {
           <p className="rounded-lg bg-[var(--color-danger-light)] p-3 text-sm text-[var(--color-danger)]">{error}</p>
         )}
         <div className="flex justify-end">
-          <Button type="submit" size="lg" disabled={submitting}>
-            {submitting ? "Creating store…" : "Create your store"}
+          <Button type="submit" size="lg" disabled={submitting || uploading}>
+            {uploading ? "Uploading photos…" : submitting ? "Creating store…" : "Create your store"}
           </Button>
         </div>
       </form>

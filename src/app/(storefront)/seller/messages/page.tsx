@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useUnreadMessages } from "@/lib/useUnreadMessages";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { useAuth } from "@/context/AuthContext";
@@ -11,7 +12,11 @@ import { PageLoader } from "@/components/ui/PageLoader";
 
 const POLL_MS = 15_000;
 
-export default function SellerMessagesPage() {
+const lastPreview = (m: { text: string; images: string[] } | undefined) =>
+  m ? m.text || (m.images.length ? "📷 Photo" : "") : "";
+
+function SellerMessages() {
+  const conversationParam = useSearchParams().get("c");
   const { role, hydrated } = useAuth();
   const { data, isLoading } = useGetConversationsQuery(role === "seller" ? "seller" : skipToken, {
     pollingInterval: POLL_MS,
@@ -22,7 +27,8 @@ export default function SellerMessagesPage() {
 
   // A buyer who opened the chat but hasn't written yet isn't worth showing.
   const conversations = (data ?? []).filter((c) => c.messages.length > 0);
-  const active = conversations.find((c) => c.id === selectedId) ?? conversations[0] ?? null;
+  const active =
+    conversations.find((c) => c.id === selectedId) ?? conversations.find((c) => c.id === conversationParam) ?? conversations[0] ?? null;
   const activeId = active?.id;
   const latest = active?.messages.at(-1)?.timestamp;
 
@@ -43,7 +49,7 @@ export default function SellerMessagesPage() {
           conversations={conversations.map((c) => ({
             id: c.id,
             name: c.buyerName,
-            preview: c.messages.at(-1)?.text ?? "",
+            preview: lastPreview(c.messages.at(-1)),
           }))}
           activeId={active?.id ?? null}
           onSelect={setSelectedId}
@@ -53,8 +59,8 @@ export default function SellerMessagesPage() {
             title={active.buyerName}
             messages={active.messages}
             viewerRole="seller"
-            onSend={async (text) => {
-              await sendMessage({ conversationId: active.id, text }).unwrap();
+            onSend={async ({ text, images }) => {
+              await sendMessage({ conversationId: active.id, text, images }).unwrap();
             }}
           />
         ) : (
@@ -64,5 +70,13 @@ export default function SellerMessagesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SellerMessagesPage() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <SellerMessages />
+    </Suspense>
   );
 }

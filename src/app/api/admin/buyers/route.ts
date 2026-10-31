@@ -7,7 +7,7 @@ import { BuyerRow, toBuyer } from "@/server/serializers";
 export const GET = route(async (req) => {
   await requireAdmin(req);
   const rows = await query<BuyerRow>(
-    `SELECT u.id, u.name, u.email, u.status,
+    `SELECT u.id, u.username, u.name, u.email, u.status,
             CASE WHEN a.user_id IS NULL THEN NULL ELSE jsonb_build_object(
               'fullName', a.full_name, 'street', a.street, 'city', a.city, 'province', a.province,
               'phone1', a.phone1, 'phone2', a.phone2, 'zipCode', a.zip_code, 'email', a.email) END AS address

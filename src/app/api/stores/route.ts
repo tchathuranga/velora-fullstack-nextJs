@@ -36,8 +36,9 @@ export const POST = route(async (req) => {
   try {
     const row = await queryOne<{ id: string }>(
       `INSERT INTO stores (slug, owner_id, store_name, business_name, full_name, address, telephone, email,
-                           about_store, bank_details, bank_details_optional, cover_color, profile_color)
-       VALUES ($1, $2, $3, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+                           about_store, bank_details, bank_details_optional, cover_color, profile_color,
+                           profile_image_url, cover_image_url)
+       VALUES ($1, $2, $3, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
       [
         slug,
         session.userId,
@@ -51,6 +52,8 @@ export const POST = route(async (req) => {
         input.bankDetailsOptional ?? null,
         palette.coverColor,
         palette.profileColor,
+        input.profileImage ?? null,
+        input.coverImage ?? null,
       ],
     );
     id = row!.id;

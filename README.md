@@ -12,6 +12,7 @@ PostgreSQL via `pg`, Redux Toolkit (RTK Query) on the frontend. See [APPLICATION
    | `DATABASE_URL` | PostgreSQL connection string |
    | `JWT_SECRET` | Random string, 32+ chars — signs the session cookie |
    | `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_EMAIL` | Used only by `db:seed-admin` (password 8+ chars) |
+   | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Image hosting for profile / cover photos, product photos (including photos inside descriptions and variations) and message photos. **Set these in every environment you deploy to** — without them uploads fail with "Image uploads aren't configured yet." |
 
 2. Create the tables and the admin account (both idempotent):
 
@@ -26,6 +27,16 @@ There is no sample data. Admins create categories and banners; sellers apply at 
 an admin approves them at `/admin/sellers`, and approved sellers list products.
 Contact details and the bank accounts shown to bank-transfer buyers live in the `site_settings` table
 (`PUT /api/admin/site`); they are empty until an admin sets them.
+
+## Marketplace rules
+
+- **Checkout** requires a signed-in buyer. "Buy it now" checks out one product directly (`/checkout?buy=<slug>`) without touching the cart.
+- **Order ids** are sequential: `ORD-10001`, `ORD-10002`, … (Postgres sequence `order_number_seq`), so they can never collide.
+- **Shipping** is per listing: first-item fee + additional-item fee × (units − 1); free-shipping listings charge nothing (`src/lib/shipping.ts`, shared by browser and server).
+- **Delivery estimate** = purchase date + handling time + delivery time (days are read from the seller's text, e.g. "2-3 days"). The seller's **ship-by** date is the order date + the maximum handling time and is stored on each order line.
+- **Listings** are `active` or `ended`. Ending a listing moves it to the seller's *Unsold* section and hides it from buyers; running out of stock does not.
+- **Seller earnings** = item price + shipping − 3% website fee of (item price + shipping).
+- **Notifications** (bell icon) are stored in `notifications`: sellers are told about new orders and buyer messages, buyers about seller messages and shipped orders.
 
 ## Architecture
 

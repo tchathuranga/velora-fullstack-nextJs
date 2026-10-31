@@ -96,14 +96,19 @@ export interface ProductVariations {
   combinations: VariationCombination[];
 }
 
+export type ProductStatus = "active" | "ended";
+
 export interface Product {
   id: string;
+  /** "ended" listings are hidden from the public marketplace and shown in the seller's Unsold section. */
+  status: ProductStatus;
   slug: string;
   title: string;
   storeId: string;
   price: number;
   quantity: number;
   brand?: string;
+  condition?: string;
   size?: string;
   color?: string;
   packageInclude?: string;
@@ -111,9 +116,15 @@ export interface Product {
   description: string;
   handlingTime: string;
   deliveryTime: string;
-  /** Delivery fee in LKR; ignored when freeDelivery is true. Absent on legacy products. */
+  /** Shipping for the first unit, in LKR; ignored when freeDelivery is true. */
   deliveryFee?: number;
+  /** Shipping for each additional unit of this listing in the same order. */
+  extraDeliveryFee?: number;
   freeDelivery?: boolean;
+  /** The seller accepts returns within 30 days. */
+  returnsAccepted: boolean;
+  /** Total units sold across all orders. */
+  soldCount: number;
   paymentMethods: PaymentMethod[];
   location: string;
   categoryId?: string;
@@ -133,6 +144,8 @@ export interface Product {
 }
 
 export interface OrderItem {
+  /** Order line id (an order may hold several lines of the same product, one per variation). */
+  id: string;
   productId: string;
   title: string;
   price: number;
@@ -141,8 +154,14 @@ export interface OrderItem {
   storeId: string;
   /** Attribute selections made by the buyer, e.g. { Color: "Blue", Size: "Medium" }. */
   variation?: Record<string, string>;
-  /** Courier tracking number, added by the seller once shipped. */
+  variationId?: string;
+  /** Shipping charged on this line (a listing's shipping is attached to its first line in the order). */
+  shippingCost: number;
+  /** Courier details, added by the seller once shipped. */
   trackingNumber?: string;
+  courierName?: string;
+  /** Last date (YYYY-MM-DD, Sri Lanka time) the seller should ship this line by. */
+  shipBy?: string;
 }
 
 export type OrderStatus = "processing" | "shipped" | "delivered";
@@ -150,6 +169,8 @@ export type OrderStatus = "processing" | "shipped" | "delivered";
 export interface Order {
   id: string;
   buyerName: string;
+  /** The buyer's unique username — shown instead of their name everywhere except the delivery address. */
+  buyerUsername: string;
   items: OrderItem[];
   subtotal: number;
   deliveryCost: number;
@@ -177,6 +198,8 @@ export interface AdminUser {
 
 export interface Buyer {
   id: string;
+  /** Unique username — how the buyer is identified across orders, messages and reviews. */
+  username: string;
   name: string;
   email: string;
   registered: boolean;
@@ -195,16 +218,33 @@ export interface SellerTransaction {
   createdAt: string;
 }
 
-export interface Message {
+export interface MessageContext {
+  product?: { id: string; slug: string; title: string; image?: string };
+  order?: { id: string };
+}
+
+export interface Message extends MessageContext {
   id: string;
   sender: "buyer" | "seller";
   text: string;
+  images: string[];
   timestamp: string;
+}
+
+export interface AppNotification {
+  id: string;
+  type: "message" | "order";
+  title: string;
+  body: string;
+  link: string;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface Conversation {
   id: string;
   buyerId: string;
+  /** The buyer's unique username. */
   buyerName: string;
   storeId: string;
   storeName: string;

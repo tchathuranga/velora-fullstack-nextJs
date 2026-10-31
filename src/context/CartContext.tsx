@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo } from "react";
-import { Product } from "@/types";
+import { Product, VariationCombination } from "@/types";
 import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
 import {
   addToCart as addToCartAction,
@@ -16,9 +16,9 @@ export type { CartItem };
 
 interface CartContextValue {
   items: CartItem[];
-  addToCart: (product: Product, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToCart: (product: Product, quantity?: number, combination?: VariationCombination) => void;
+  removeFromCart: (productId: string, variationId?: string) => void;
+  updateQuantity: (productId: string, variationId: string | undefined, quantity: number) => void;
   clearCart: () => void;
   subtotal: number;
   itemCount: number;
@@ -48,19 +48,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.price * i.quantity, 0), [items]);
 
-  const addToCart = (product: Product, quantity = 1) => {
+  const addToCart = (product: Product, quantity = 1, combination?: VariationCombination) => {
     const currentTotal = items.reduce((sum, item) => sum + item.quantity, 0);
     const allowedToAdd = Math.max(0, MAX_CART_ITEMS - currentTotal);
     const safeQuantity = Math.min(quantity, allowedToAdd || quantity);
-    dispatch(addToCartAction({ product, quantity: safeQuantity }));
+    dispatch(addToCartAction({ product, quantity: safeQuantity, combination }));
   };
 
-  const removeFromCart = (productId: string) => {
-    dispatch(removeFromCartAction(productId));
+  const removeFromCart = (productId: string, variationId?: string) => {
+    dispatch(removeFromCartAction({ productId, variationId }));
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
-    dispatch(updateQuantityAction({ productId, quantity: Math.max(1, Math.min(MAX_CART_ITEMS, quantity)) }));
+  const updateQuantity = (productId: string, variationId: string | undefined, quantity: number) => {
+    dispatch(updateQuantityAction({ productId, variationId, quantity: Math.max(1, Math.min(MAX_CART_ITEMS, quantity)) }));
   };
 
   const clearCart = () => dispatch(clearCartAction());

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Bold, Italic, Strikethrough, List, ListOrdered, Quote, Heading2, Undo2, Redo2 } from "lucide-react";
+import Image from "@tiptap/extension-image";
+import { Bold, Italic, Strikethrough, List, ListOrdered, Quote, Heading2, Undo2, Redo2, ImagePlus, Loader2 } from "lucide-react";
 import clsx from "clsx";
 
 interface RichTextEditorProps {
@@ -15,6 +16,8 @@ interface RichTextEditorProps {
   placeholder?: string;
   value: string;
   onChange: (html: string) => void;
+  /** When set, the toolbar gets an "Insert photo" button; resolves to the hosted URL of the uploaded file. */
+  onUploadImage?: (file: File) => Promise<string>;
   className?: string;
 }
 
@@ -49,7 +52,25 @@ function ToolbarButton({
   );
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, onUploadImage }: { editor: Editor; onUploadImage?: (file: File) => Promise<string> }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  const insertImage = async (file: File | undefined) => {
+    if (!file || !onUploadImage) return;
+    setUploading(true);
+    setError("");
+    try {
+      const src = await onUploadImage(file);
+      editor.chain().focus().setImage({ src, alt: file.name }).run();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The photo couldn't be uploaded.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-1 border-b border-[var(--color-border)] bg-slate-50 p-1.5">
       <ToolbarButton
@@ -94,25 +115,44 @@ function Toolbar({ editor }: { editor: Editor }) {
         <Quote size={16} />
       </ToolbarButton>
       <div className="mx-1 h-5 w-px bg-[var(--color-border)]" />
+      {onUploadImage && (
+        <>
+          <ToolbarButton label="Insert photo" disabled={uploading} onClick={() => inputRef.current?.click()}>
+            {uploading ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}
+          </ToolbarButton>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              void insertImage(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <div className="mx-1 h-5 w-px bg-[var(--color-border)]" />
+        </>
+      )}
       <ToolbarButton label="Undo" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
         <Undo2 size={16} />
       </ToolbarButton>
       <ToolbarButton label="Redo" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()}>
         <Redo2 size={16} />
       </ToolbarButton>
+      {error && <span className="ml-2 text-xs text-[var(--color-danger)]">{error}</span>}
     </div>
   );
 }
 
-export function RichTextEditor({ label, hint, error, required, placeholder, value, onChange, className }: RichTextEditorProps) {
+export function RichTextEditor({ label, hint, error, required, placeholder, value, onChange, onUploadImage, className }: RichTextEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [StarterKit, Placeholder.configure({ placeholder })],
+    extensions: [StarterKit, Image.configure({ allowBase64: false }), Placeholder.configure({ placeholder })],
     content: value,
     editorProps: {
       attributes: {
         class:
-          "rte-content prose-sm min-h-32 max-w-none px-3 py-2 text-sm text-slate-900 focus:outline-none [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--color-border)] [&_blockquote]:pl-3 [&_blockquote]:italic [&_h2]:text-base [&_h2]:font-semibold",
+          "rte-content prose-sm min-h-32 max-w-none px-3 py-2 text-sm text-slate-900 focus:outline-none [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--color-border)] [&_blockquote]:pl-3 [&_blockquote]:italic [&_h2]:text-base [&_h2]:font-semibold [&_img]:my-2 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg",
       },
     },
     onUpdate: ({ editor: instance }) => onChange(instance.getHTML()),
@@ -140,7 +180,7 @@ export function RichTextEditor({ label, hint, error, required, placeholder, valu
           className,
         )}
       >
-        {editor && <Toolbar editor={editor} />}
+        {editor && <Toolbar editor={editor} onUploadImage={onUploadImage} />}
         <EditorContent editor={editor} />
       </div>
       {error ? (

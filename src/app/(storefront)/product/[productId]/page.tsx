@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { getRelatedProducts } from "@/lib/data/products";
@@ -10,6 +11,7 @@ import { useCategories } from "@/context/CategoriesContext";
 import { useStores } from "@/context/StoresContext";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductActions } from "@/components/product/ProductActions";
+import { SellerListingControls } from "@/components/product/SellerListingControls";
 import { ProductViewTracker } from "@/components/product/ProductViewTracker";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { FeedbackList } from "@/components/feedback/FeedbackList";
@@ -17,12 +19,16 @@ import { ContactSellerButton } from "@/components/store/ContactSellerButton";
 import { StarRating } from "@/components/ui/StarRating";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useProducts } from "@/context/ProductsContext";
+import { useAuth } from "@/context/AuthContext";
+import type { VariationCombination } from "@/types";
 
 export default function ProductPreviewPage() {
   const { productId } = useParams<{ productId: string }>();
   const { products, loading: productsLoading } = useProducts();
   const { categories } = useCategories();
   const { stores, loading: storesLoading } = useStores();
+  const { role, storeSlug } = useAuth();
+  const [pickedVariation, setPickedVariation] = useState<string | null>(null);
   const { data: product, isLoading: productLoading, isError } = useGetProductQuery(productId);
   const { data: feedback = [], isLoading: feedbackLoading } = useGetFeedbackQuery(product?.id ?? "", { skip: !product });
 
@@ -34,9 +40,21 @@ export default function ProductPreviewPage() {
   const category = product.categoryId ? getCategoryById(categories, product.categoryId) : undefined;
   const subcategory = product.subcategoryId ? getSubcategoryById(category, product.subcategoryId) : undefined;
   const related = getRelatedProducts(products, product);
+  const isOwner = role === "seller" && !!store && storeSlug === store.slug;
+
+  // The shopper's choice, else the first variation that is in stock (or just the first one when all are sold out).
+  const combinations = product.variations?.combinations ?? [];
+  const combination: VariationCombination | null =
+    combinations.find((c) => c.id === pickedVariation) ?? combinations.find((c) => c.quantity > 0) ?? combinations[0] ?? null;
+  const variationImage = combination
+    ? Object.values(combination.values)
+        .map((option) => product.variations?.images[option])
+        .find(Boolean)
+    : undefined;
 
   const specs = [
     product.brand && { label: "Brand", value: product.brand },
+    product.condition && { label: "Condition", value: product.condition },
     product.size && { label: "Size", value: product.size },
     product.color && { label: "Color", value: product.color },
     product.packageInclude && { label: "Package include", value: product.packageInclude },
@@ -54,6 +72,7 @@ export default function ProductPreviewPage() {
           count={product.galleryCount}
           title={product.title}
           images={product.images}
+          overrideImage={variationImage}
         />
 
         <div>
@@ -88,21 +107,25 @@ export default function ProductPreviewPage() {
             </div>
           </div>
 
-          <div className="mt-4">{store && <ContactSellerButton storeId={store.id} />}</div>
+          {isOwner && (
+            <div className="mt-4">
+              <SellerListingControls product={product} />
+            </div>
+          )}
+
+          <div className="mt-4">{store && <ContactSellerButton storeId={store.id} productId={product.id} />}</div>
 
           <div className="mt-6">
-            <ProductActions product={product} />
-          </div>
-
-          <div className="mt-6 grid grid-cols-2 gap-4 rounded-lg bg-slate-50 p-4 text-sm">
-            <div>
-              <p className="text-[var(--color-muted)]">Handling time</p>
-              <p className="font-medium text-slate-800">{product.handlingTime}</p>
-            </div>
-            <div>
-              <p className="text-[var(--color-muted)]">Deliver by</p>
-              <p className="font-medium text-slate-800">{product.deliveryTime}</p>
-            </div>
+            {product.status === "ended" ? (
+              <p className="rounded-lg bg-slate-50 p-4 text-sm text-[var(--color-muted)]">This listing is no longer available for purchase.</p>
+            ) : (
+              <ProductActions
+                key={product.id}
+                product={product}
+                combination={combination}
+                onSelectCombination={setPickedVariation}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -122,7 +145,7 @@ export default function ProductPreviewPage() {
       <section className="mt-8 card p-6">
         <h2 className="section-title mb-4">Description</h2>
         <div
-          className="max-w-none text-sm leading-relaxed text-slate-600 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--color-border)] [&_blockquote]:pl-3 [&_blockquote]:italic [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-slate-800 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
+          className="max-w-none text-sm leading-relaxed text-slate-600 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--color-border)] [&_blockquote]:pl-3 [&_blockquote]:italic [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-slate-800 [&_img]:my-3 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
           dangerouslySetInnerHTML={{ __html: product.description }}
         />
       </section>

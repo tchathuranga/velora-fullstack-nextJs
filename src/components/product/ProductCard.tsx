@@ -26,6 +26,13 @@ export function ProductCard({ product }: { product: Product }) {
           label={product.title}
           className="h-full w-full transition-transform duration-300 group-hover:scale-105"
         />
+        {product.status === "ended" ? (
+          <span className="absolute left-2 top-2 rounded-full bg-slate-800/85 px-2 py-0.5 text-[10px] font-semibold text-white">Ended</span>
+        ) : product.quantity === 0 ? (
+          <span className="absolute left-2 top-2 rounded-full bg-[var(--color-danger)] px-2 py-0.5 text-[10px] font-semibold text-white">
+            Out of Stock
+          </span>
+        ) : null}
         <button
           type="button"
           onClick={(e) => {

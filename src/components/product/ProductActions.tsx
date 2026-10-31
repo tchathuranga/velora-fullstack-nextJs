@@ -1,93 +1,100 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Minus, Plus, Check } from "lucide-react";
+import { Heart, Minus, Plus, Check, Truck, RotateCcw, CalendarDays } from "lucide-react";
 import clsx from "clsx";
-import { Product } from "@/types";
+import { Product, VariationCombination } from "@/types";
 import { Button } from "@/components/ui/Button";
-import { Textarea } from "@/components/ui/Textarea";
+import { Select } from "@/components/ui/Select";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { formatCurrency } from "@/lib/utils";
-import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
-import { setJustAdded, setNote, setQuantity, updateSelected } from "@/Redux/slices/uiSlice";
+import { estimateDelivery, formatEstimate, shippingCost } from "@/lib/shipping";
 
-export function ProductActions({ product }: { product: Product }) {
+/** "Blue / Large" — the combination's option values in attribute order. */
+export const combinationLabel = (c: VariationCombination) => Object.values(c.values).join(" / ");
+
+export function ProductActions({
+  product,
+  combination,
+  onSelectCombination,
+}: {
+  product: Product;
+  /** The variation currently selected on the page (null for listings without variations). */
+  combination: VariationCombination | null;
+  onSelectCombination: (id: string) => void;
+}) {
   const { addToCart } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const router = useRouter();
+  const [wantedQuantity, setQuantity] = useState(1);
+  const [justAdded, setJustAdded] = useState(false);
 
-  const dispatch = useAppDispatch();
-  const attributes = product.variations?.attributes ?? [];
-  const selected = useAppSelector((state) => state.ui.selected);
-  const quantity = useAppSelector((state) => state.ui.quantity);
-  const note = useAppSelector((state) => state.ui.note);
-  const justAdded = useAppSelector((state) => state.ui.justAdded);
-
-  const activeCombination = useMemo(() => {
-    if (!product.variations) return null;
-    return (
-      product.variations.combinations.find((c) =>
-        Object.entries(selected).every(([key, value]) => c.values[key] === value),
-      ) ?? product.variations.combinations[0]
-    );
-  }, [product.variations, selected]);
-
-  const price = activeCombination?.price ?? product.price;
-  const availableQty = activeCombination?.quantity ?? product.quantity;
+  const combinations = product.variations?.combinations ?? [];
+  const price = combination?.price ?? product.price;
+  const availableQty = combination?.quantity ?? product.quantity;
+  const outOfStock = availableQty === 0;
   const wishlisted = isWishlisted(product.id);
 
+  // The quantity always stays within what the chosen variation has in stock.
+  const quantity = Math.min(Math.max(1, wantedQuantity), Math.max(1, availableQty));
+
+  const shipping = shippingCost(product, quantity);
+  const estimate = estimateDelivery(product.handlingTime, product.deliveryTime);
+  const estimateText = estimate ? formatEstimate(estimate) : null;
+
   const handleAddToCart = () => {
-    addToCart(product, quantity);
-    dispatch(setJustAdded(true));
-    setTimeout(() => dispatch(setJustAdded(false)), 1500);
+    addToCart(product, quantity, combination ?? undefined);
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 1500);
   };
 
+  // "Buy it now" goes straight to checkout for this product only — nothing is added to the cart.
   const handleBuyNow = () => {
-    addToCart(product, quantity);
-    router.push("/checkout");
+    const params = new URLSearchParams({ buy: product.slug, qty: String(quantity) });
+    if (combination) params.set("variation", combination.id);
+    router.push(`/checkout?${params.toString()}`);
   };
 
   return (
     <div className="space-y-5">
       <div>
         <p className="text-2xl font-bold text-slate-900">{formatCurrency(price)}</p>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          {availableQty > 0 ? `${availableQty} in stock` : "Out of stock"}
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm">
+          {outOfStock ? (
+            <span className="rounded-full bg-[var(--color-danger-light)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-danger)]">
+              Out of Stock
+            </span>
+          ) : (
+            <span className="text-[var(--color-muted)]">{availableQty} available</span>
+          )}
+          <span className="text-[var(--color-muted)]">{product.soldCount} sold</span>
         </p>
       </div>
 
-      {attributes.map((attr) => (
-        <div key={attr.name}>
-          <p className="mb-2 text-sm font-medium text-slate-700">{attr.name}</p>
-          <div className="flex flex-wrap gap-2">
-            {attr.options.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => dispatch(updateSelected({ key: attr.name, value: option }))}
-                className={clsx(
-                  "rounded-lg border px-3 py-1.5 text-sm transition",
-                  selected[attr.name] === option
-                    ? "border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary)]"
-                    : "border-[var(--color-border)] text-slate-700 hover:border-slate-400",
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
+      {combinations.length > 0 && (
+        <Select
+          label="Variation"
+          value={combination?.id ?? ""}
+          onChange={(e) => onSelectCombination(e.target.value)}
+        >
+          {combinations.map((c) => (
+            <option key={c.id} value={c.id} disabled={c.quantity === 0}>
+              {combinationLabel(c)} — {formatCurrency(c.price)} {c.quantity === 0 ? "(Out of stock)" : `(${c.quantity} available)`}
+            </option>
+          ))}
+        </Select>
+      )}
 
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium text-slate-700">Quantity</span>
         <div className="flex items-center rounded-lg border border-[var(--color-border)]">
           <button
             type="button"
-            onClick={() => dispatch(setQuantity(Math.max(1, quantity - 1)))}
-            className="flex h-9 w-9 items-center justify-center text-slate-600 hover:bg-slate-50"
+            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            disabled={outOfStock}
+            className="flex h-9 w-9 items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40"
             aria-label="Decrease quantity"
           >
             <Minus size={14} />
@@ -95,8 +102,9 @@ export function ProductActions({ product }: { product: Product }) {
           <span className="w-10 text-center text-sm font-medium">{quantity}</span>
           <button
             type="button"
-            onClick={() => dispatch(setQuantity(Math.min(availableQty || 1, quantity + 1)))}
-            className="flex h-9 w-9 items-center justify-center text-slate-600 hover:bg-slate-50"
+            onClick={() => setQuantity(Math.min(availableQty || 1, quantity + 1))}
+            disabled={outOfStock || quantity >= availableQty}
+            className="flex h-9 w-9 items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40"
             aria-label="Increase quantity"
           >
             <Plus size={14} />
@@ -104,19 +112,59 @@ export function ProductActions({ product }: { product: Product }) {
         </div>
       </div>
 
-      <Textarea
-        label="Buyer Note"
-        placeholder="Add a note for the seller (optional)"
-        value={note}
-        onChange={(e) => dispatch(setNote(e.target.value))}
-        className="min-h-16"
-      />
+      <ul className="space-y-3 rounded-lg bg-slate-50 p-4 text-sm">
+        <li className="flex gap-2">
+          <Truck size={16} className="mt-0.5 shrink-0 text-[var(--color-muted)]" />
+          <div>
+            {product.freeDelivery ? (
+              <p className="font-semibold text-[var(--color-success)]">Free Shipping</p>
+            ) : (
+              <>
+                <p className="font-medium text-slate-800">
+                  Shipping: {formatCurrency(product.deliveryFee ?? 0)} for the first item
+                  {!!product.extraDeliveryFee && <> + {formatCurrency(product.extraDeliveryFee)} for each additional item</>}
+                </p>
+                {quantity > 1 && (
+                  <p className="text-[var(--color-muted)]">
+                    Shipping for {quantity} items: <span className="font-medium text-slate-800">{formatCurrency(shipping)}</span>
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </li>
+        <li className="flex gap-2">
+          <CalendarDays size={16} className="mt-0.5 shrink-0 text-[var(--color-muted)]" />
+          <div>
+            {estimateText ? (
+              <>
+                <p className="font-medium text-slate-800">{estimateText.by}</p>
+                <p className="text-[var(--color-muted)]">{estimateText.within} if you order today</p>
+              </>
+            ) : (
+              <>
+                <p className="text-[var(--color-muted)]">Handling time: {product.handlingTime}</p>
+                <p className="text-[var(--color-muted)]">Delivery time: {product.deliveryTime}</p>
+              </>
+            )}
+          </div>
+        </li>
+        {product.returnsAccepted && (
+          <li className="flex gap-2">
+            <RotateCcw size={16} className="mt-0.5 shrink-0 text-[var(--color-muted)]" />
+            <div>
+              <p className="font-medium text-slate-800">Return policy</p>
+              <p className="text-[var(--color-muted)]">Seller accepts returns within 30 days.</p>
+            </div>
+          </li>
+        )}
+      </ul>
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button variant="accent" size="lg" className="flex-1" onClick={handleBuyNow} disabled={availableQty === 0}>
+        <Button variant="accent" size="lg" className="flex-1" onClick={handleBuyNow} disabled={outOfStock}>
           Buy It Now
         </Button>
-        <Button variant="outline" size="lg" className="flex-1" onClick={handleAddToCart} disabled={availableQty === 0}>
+        <Button variant="outline" size="lg" className="flex-1" onClick={handleAddToCart} disabled={outOfStock}>
           {justAdded ? (
             <>
               <Check size={16} /> Added

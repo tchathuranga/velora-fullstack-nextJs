@@ -1,67 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ImageDropzone } from "@/components/ui/ImageDropzone";
+import { useAppDispatch, useAppSelector } from "@/Redux/hooks";
+import { MAX_IMAGES, addImages, removeImage, replaceImage, swapImages } from "@/Redux/slices/productFormSlice";
+import { uploadImage } from "@/lib/upload";
 
-// Index 0 is the main/cover image; 1..12 are the gallery grid.
-const TOTAL_SLOTS = 13;
+/**
+ * The listing's photos (index 0 is the main image). A photo is uploaded the moment it is chosen and the form keeps
+ * only its hosted URL, so photos survive moving between the listing form and the variation pages and are exactly what
+ * gets saved with the listing.
+ */
+export function ProductPhotoGrid() {
+  const dispatch = useAppDispatch();
+  const images = useAppSelector((state) => state.productForm.images);
+  const [pending, setPending] = useState(0);
+  const [error, setError] = useState("");
 
-interface SlotImage {
-  file: File;
-  preview: string;
-}
+  const upload = async (files: File[], replaceIndex?: number) => {
+    setError("");
+    setPending((n) => n + files.length);
+    const results = await Promise.allSettled(files.map((file) => uploadImage(file, "product")));
+    setPending((n) => n - files.length);
 
-interface ProductPhotoGridProps {
-  /** Called whenever the filled photo slots change, with the uploaded files in slot order (main image first). */
-  onPhotosChange?: (files: File[]) => void;
-}
+    const urls = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (failed) setError(failed.reason instanceof Error ? failed.reason.message : "A photo couldn't be uploaded. Please try again.");
+    if (urls.length === 0) return;
 
-export function ProductPhotoGrid({ onPhotosChange }: ProductPhotoGridProps) {
-  const [photos, setPhotos] = useState<(SlotImage | null)[]>(Array(TOTAL_SLOTS).fill(null));
-
-  useEffect(() => {
-    onPhotosChange?.(photos.filter((p): p is SlotImage => p !== null).map((p) => p.file));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos]);
-
-  const fillEmptySlots = (files: File[]) => {
-    setPhotos((prev) => {
-      const next = [...prev];
-      let fileIndex = 0;
-      for (let i = 0; i < next.length && fileIndex < files.length; i++) {
-        if (!next[i]) {
-          next[i] = { file: files[fileIndex], preview: URL.createObjectURL(files[fileIndex]) };
-          fileIndex++;
-        }
-      }
-      return next;
-    });
+    if (replaceIndex !== undefined) {
+      dispatch(replaceImage({ index: replaceIndex, url: urls[0] }));
+      if (urls.length > 1) dispatch(addImages(urls.slice(1)));
+    } else {
+      dispatch(addImages(urls));
+    }
   };
 
   const setSlot = (index: number, file: File | null) => {
-    setPhotos((prev) => {
-      const next = [...prev];
-      const existing = next[index];
-      if (existing) URL.revokeObjectURL(existing.preview);
-      next[index] = file ? { file, preview: URL.createObjectURL(file) } : null;
-      return next;
-    });
-  };
-
-  const reorder = (fromIndex: number, toIndex: number) => {
-    setPhotos((prev) => {
-      const next = [...prev];
-      [next[fromIndex], next[toIndex]] = [next[toIndex], next[fromIndex]];
-      return next;
-    });
+    if (file) void upload([file], index);
+    else dispatch(removeImage(index));
   };
 
   const handleGridDrop = (e: React.DragEvent<HTMLDivElement>) => {
     if (e.dataTransfer.types.includes("application/x-photo-index")) return;
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
-    if (files.length) fillEmptySlots(files);
+    if (files.length) void upload(files);
   };
+
+  // Empty slots right after the filled ones show a spinner while photos are uploading.
+  const uploadingSlots = new Set(Array.from({ length: pending }, (_, i) => images.length + i));
 
   return (
     <div>
@@ -72,11 +60,12 @@ export function ProductPhotoGrid({ onPhotosChange }: ProductPhotoGridProps) {
             label="Main image"
             className="w-full"
             index={0}
-            preview={photos[0]?.preview ?? null}
+            preview={images[0] ?? null}
+            busy={uploadingSlots.has(0)}
             multiple
             onFileSelect={(file) => setSlot(0, file)}
-            onFilesSelect={fillEmptySlots}
-            onReorder={reorder}
+            onFilesSelect={(files) => void upload(files)}
+            onReorder={(from, to) => dispatch(swapImages({ from, to }))}
           />
         </div>
         <div
@@ -84,23 +73,25 @@ export function ProductPhotoGrid({ onPhotosChange }: ProductPhotoGridProps) {
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleGridDrop}
         >
-          {photos.slice(1).map((photo, i) => {
+          {Array.from({ length: MAX_IMAGES - 1 }, (_, i) => {
             const index = i + 1;
             return (
               <ImageDropzone
                 key={index}
                 label={String(index)}
                 index={index}
-                preview={photo?.preview ?? null}
+                preview={images[index] ?? null}
+                busy={uploadingSlots.has(index)}
                 multiple
                 onFileSelect={(file) => setSlot(index, file)}
-                onFilesSelect={fillEmptySlots}
-                onReorder={reorder}
+                onFilesSelect={(files) => void upload(files)}
+                onReorder={(from, to) => dispatch(swapImages({ from, to }))}
               />
             );
           })}
         </div>
       </div>
+      {error && <p className="mt-2 text-sm text-[var(--color-danger)]">{error}</p>}
       <p className="mt-2 text-xs text-[var(--color-muted)]">
         Tip: select or drag in multiple photos at once, and drag a photo onto another slot to swap their order.
       </p>

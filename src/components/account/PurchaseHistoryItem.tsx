@@ -7,6 +7,7 @@ import { PlaceholderImage } from "@/components/ui/PlaceholderImage";
 import { Modal } from "@/components/ui/Modal";
 import { FeedbackForm } from "@/components/feedback/FeedbackForm";
 import { useSubmitFeedbackMutation } from "@/Redux/api";
+import { ContactSellerButton } from "@/components/store/ContactSellerButton";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export function PurchaseHistoryItem({
@@ -36,10 +37,14 @@ export function PurchaseHistoryItem({
           ) : (
             <p className="font-semibold text-slate-900">{item.title}</p>
           )}
-          <span className="text-xs text-[var(--color-muted)]">Ordered {formatDate(order.createdAt)}</span>
+          <span className="text-xs text-[var(--color-muted)]">
+            Order {order.id} · {formatDate(order.createdAt)}
+          </span>
         </div>
+        {item.variation && <p className="text-sm text-slate-600">{Object.values(item.variation).join(" / ")}</p>}
         <p className="text-sm text-[var(--color-muted)]">
           Qty {item.quantity} · {formatCurrency(item.price)} each
+          {item.shippingCost > 0 && <> · Shipping {formatCurrency(item.shippingCost)}</>}
         </p>
         <div className="my-2 border-t border-dashed border-[var(--color-border)]" />
         <div className="flex gap-4 text-sm">
@@ -49,17 +54,32 @@ export function PurchaseHistoryItem({
           <button type="button" onClick={() => setFeedbackOpen(true)} className="link-blue font-medium">
             Leave feedback
           </button>
+          <ContactSellerButton storeId={item.storeId} orderId={order.id} productId={item.productId || undefined} label="Message seller" />
         </div>
       </div>
 
       <Modal open={trackingOpen} onClose={() => setTrackingOpen(false)} title="Tracking information">
-        <div className="rounded-lg bg-slate-50 p-3 text-sm">
-          <span className="text-[var(--color-muted)]">Tracking number: </span>
-          {item.trackingNumber ? (
-            <span className="font-semibold text-slate-900">{item.trackingNumber}</span>
-          ) : (
-            <span className="text-[var(--color-muted)]">Not available yet</span>
-          )}
+        <div className="space-y-1 rounded-lg bg-slate-50 p-3 text-sm">
+          <p>
+            <span className="text-[var(--color-muted)]">Order ID: </span>
+            <span className="font-semibold text-slate-900">{order.id}</span>
+          </p>
+          <p>
+            <span className="text-[var(--color-muted)]">Courier company: </span>
+            {item.courierName ? (
+              <span className="font-semibold text-slate-900">{item.courierName}</span>
+            ) : (
+              <span className="text-[var(--color-muted)]">Not available yet</span>
+            )}
+          </p>
+          <p>
+            <span className="text-[var(--color-muted)]">Tracking number: </span>
+            {item.trackingNumber ? (
+              <span className="font-semibold text-slate-900">{item.trackingNumber}</span>
+            ) : (
+              <span className="text-[var(--color-muted)]">Not available yet</span>
+            )}
+          </p>
         </div>
       </Modal>
 

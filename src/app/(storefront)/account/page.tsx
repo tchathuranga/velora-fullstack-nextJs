@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { PageLoader } from "@/components/ui/PageLoader";
 
 export default function AccountPage() {
-  const { role, hydrated, displayName, email, avatarUrl, coverUrl, sellerStoreSlug, address, saveAddress } = useAuth();
+  const { role, hydrated, username, displayName, email, avatarUrl, coverUrl, sellerStoreSlug, address, saveAddress } = useAuth();
   const [updateProfileImages] = useUpdateProfileImagesMutation();
   const [imageError, setImageError] = useState("");
   const { products, loading: productsLoading } = useProducts();
@@ -84,6 +84,7 @@ export default function AccountPage() {
           </div>
           <div className="pt-3">
             <h1 className="text-xl font-bold text-slate-900">{displayName}</h1>
+            {username && <p className="text-sm font-medium text-slate-700">@{username}</p>}
             <p className="text-sm text-[var(--color-muted)]">{email}</p>
           </div>
         </div>
