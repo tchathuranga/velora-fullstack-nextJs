@@ -6,8 +6,7 @@ import { loadOrders } from "@/server/orders";
 /**
  * Order details.
  *  - `?as=seller`: a seller's view of an order — only their own store's items.
- *  - Otherwise: the buyer who placed it, or an admin, sees everything. Guest orders (no buyer account) are
- *    readable by anyone holding the order id, a random unguessable reference shown on the confirmation page.
+ *  - Otherwise: only the buyer who placed it, or an admin, can read it.
  */
 export const GET = route(async (req, ctx: RouteContext<"/api/orders/[id]">) => {
   const { id: rawId } = await ctx.params;
@@ -25,10 +24,7 @@ export const GET = route(async (req, ctx: RouteContext<"/api/orders/[id]">) => {
   if (!order) throw notFound("Order not found.");
 
   const owner = await queryOne<{ buyer_id: string | null }>("SELECT buyer_id FROM orders WHERE id = $1", [id]);
-  const buyerId = owner?.buyer_id ?? null;
-  if (buyerId === null) return ok(order);
-
   const session = await getSession(req);
-  if (session && (session.role === "admin" || session.userId === buyerId)) return ok(order);
+  if (session && (session.role === "admin" || session.userId === owner?.buyer_id)) return ok(order);
   throw notFound("Order not found.");
 });

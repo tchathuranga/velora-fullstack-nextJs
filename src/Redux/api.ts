@@ -2,6 +2,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { AuthUser } from "@/types/auth";
 import type {
   AdminUser,
+  AppNotification,
   Address,
   Banner,
   Buyer,
@@ -13,6 +14,7 @@ import type {
   Order,
   PaymentMethod,
   Product,
+  ProductStatus,
   ProductVariations,
   SellerStatus,
   SellerTransaction,
@@ -27,6 +29,8 @@ const USER_TAGS = [
   "MyStore",
   "Orders",
   "Order",
+  "MyProducts",
+  "Notifications",
   "Wishlist",
   "Conversations",
   "AdminStores",
@@ -59,6 +63,9 @@ export interface CreateStoreInput {
   aboutStore: string;
   bankDetails: BankInput;
   bankDetailsOptional?: BankInput;
+  /** Cloudinary URLs of the photos chosen while registering. */
+  profileImage?: string;
+  coverImage?: string;
 }
 
 export interface CreateProductInput {
@@ -67,7 +74,8 @@ export interface CreateProductInput {
   subcategoryId: string | null;
   price: number;
   quantity: number;
-  brand?: string;
+  brand: string;
+  condition: string;
   size?: string;
   color?: string;
   packageInclude?: string;
@@ -77,6 +85,8 @@ export interface CreateProductInput {
   deliveryTime: string;
   freeDelivery: boolean;
   deliveryFee: number;
+  extraDeliveryFee: number;
+  returnsAccepted: boolean;
   paymentMethods: PaymentMethod[];
   location: string;
   images: string[];
@@ -84,7 +94,7 @@ export interface CreateProductInput {
 }
 
 export interface PlaceOrderInput {
-  items: { productId: string; quantity: number }[];
+  items: { productId: string; variationId?: string; quantity: number }[];
   paymentMethod: PaymentMethod;
   billing: Omit<Address, "email"> & { email?: string };
   orderNote?: string;
@@ -257,8 +267,18 @@ export const api = createApi({
     }),
     createProduct: build.mutation<Product, CreateProductInput>({
       query: (body) => ({ url: "/products", method: "POST", body }),
-      invalidatesTags: ["Products", "Stores", "MyStore"],
+      invalidatesTags: ["Products", "Stores", "MyStore", "MyProducts"],
     }),
+    updateProduct: build.mutation<Product, { slug: string; input: CreateProductInput }>({
+      query: ({ slug, input }) => ({ url: `/products/${encodeURIComponent(slug)}`, method: "PATCH", body: input }),
+      invalidatesTags: ["Products", "Product", "Stores", "MyStore", "MyProducts"],
+    }),
+    setProductStatus: build.mutation<Product, { slug: string; status: ProductStatus }>({
+      query: ({ slug, status }) => ({ url: `/products/${encodeURIComponent(slug)}/status`, method: "PUT", body: { status } }),
+      invalidatesTags: ["Products", "Product", "Stores", "MyStore", "MyProducts"],
+    }),
+    /** The signed-in seller's own listings, active and ended. */
+    getMyProducts: build.query<Product[], void>({ query: () => "/stores/mine/products", providesTags: ["MyProducts"] }),
     getFeedback: build.query<Feedback[], string>({
       query: (productId) => `/feedback?productId=${productId}`,
       providesTags: (_res, _err, productId) => [{ type: "Feedback", id: productId }],
@@ -283,11 +303,14 @@ export const api = createApi({
       query: (id) => `/orders/${encodeURIComponent(id)}?as=seller`,
       providesTags: (_res, _err, id) => [{ type: "Order", id }],
     }),
-    setTrackingNumber: build.mutation<{ trackingNumber: string }, { orderId: string; productId: string; trackingNumber: string }>({
-      query: ({ orderId, productId, trackingNumber }) => ({
-        url: `/orders/${encodeURIComponent(orderId)}/items/${productId}`,
+    setShipment: build.mutation<
+      { trackingNumber: string; courierName: string },
+      { orderId: string; itemId: string; trackingNumber: string; courierName: string }
+    >({
+      query: ({ orderId, itemId, trackingNumber, courierName }) => ({
+        url: `/orders/${encodeURIComponent(orderId)}/items/${itemId}`,
         method: "PATCH",
-        body: { trackingNumber },
+        body: { trackingNumber, courierName },
       }),
       invalidatesTags: ["Orders", "Order"],
     }),
@@ -301,9 +324,22 @@ export const api = createApi({
       query: (body) => ({ url: "/conversations", method: "POST", body }),
       invalidatesTags: ["Conversations"],
     }),
-    sendMessage: build.mutation<Message, { conversationId: string; text: string }>({
-      query: ({ conversationId, text }) => ({ url: `/conversations/${conversationId}/messages`, method: "POST", body: { text } }),
+    sendMessage: build.mutation<
+      Message,
+      { conversationId: string; text: string; images?: string[]; productId?: string; orderId?: string }
+    >({
+      query: ({ conversationId, ...body }) => ({ url: `/conversations/${conversationId}/messages`, method: "POST", body }),
       invalidatesTags: ["Conversations"],
+    }),
+
+    // ───────────── Notifications ─────────────
+    getNotifications: build.query<{ notifications: AppNotification[]; unreadCount: number }, void>({
+      query: () => "/notifications",
+      providesTags: ["Notifications"],
+    }),
+    markNotificationsRead: build.mutation<{ ok: true }, string[] | void>({
+      query: (ids) => ({ url: "/notifications", method: "POST", body: ids ? { ids } : {} }),
+      invalidatesTags: ["Notifications"],
     }),
 
     // ───────────── Wishlist ─────────────
@@ -384,6 +420,11 @@ export const {
   useGetProductsQuery,
   useGetProductQuery,
   useCreateProductMutation,
+  useUpdateProductMutation,
+  useSetProductStatusMutation,
+  useGetMyProductsQuery,
+  useGetNotificationsQuery,
+  useMarkNotificationsReadMutation,
   useGetFeedbackQuery,
   useSubmitFeedbackMutation,
   usePlaceOrderMutation,
@@ -391,7 +432,7 @@ export const {
   useGetSellerOrdersQuery,
   useGetOrderQuery,
   useGetSellerOrderQuery,
-  useSetTrackingNumberMutation,
+  useSetShipmentMutation,
   useGetConversationsQuery,
   useUpdateProfileImagesMutation,
   useUpdateStoreImagesMutation,

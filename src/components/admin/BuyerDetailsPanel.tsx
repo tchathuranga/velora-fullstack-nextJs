@@ -15,7 +15,8 @@ export function BuyerDetailsPanel({
     <div className="flex h-full flex-col p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">{buyer.name}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{buyer.username}</h2>
+          <p className="text-sm text-[var(--color-muted)]">{buyer.name}</p>
           <p className="text-sm text-[var(--color-muted)]">{buyer.email}</p>
         </div>
         <Button

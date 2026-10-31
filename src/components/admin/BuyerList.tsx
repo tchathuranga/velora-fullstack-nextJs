@@ -30,7 +30,8 @@ export function BuyerList({
             )}
           >
             <span className={clsx("text-sm font-medium", activeId === buyer.id ? "text-[var(--color-primary)]" : "text-slate-700")}>
-              {buyer.name}
+              {buyer.username}
+              <span className="ml-2 text-xs font-normal text-[var(--color-muted)]">{buyer.name}</span>
             </span>
             <Badge tone={status === "active" ? "success" : "danger"}>{status === "active" ? "Active" : "Limited"}</Badge>
           </button>

@@ -213,3 +213,45 @@ CREATE TABLE IF NOT EXISTS site_settings (
   key   text PRIMARY KEY,
   value jsonb NOT NULL
 );
+
+-- ───────────────────────── v2 additions ─────────────────────────
+-- Listings: ending a listing moves it to "Unsold"; running out of stock never does.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS status             text NOT NULL DEFAULT 'active';
+ALTER TABLE products ADD COLUMN IF NOT EXISTS condition          text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS extra_delivery_fee numeric(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS returns_accepted   boolean NOT NULL DEFAULT false;
+DO $$ BEGIN
+  ALTER TABLE products ADD CONSTRAINT products_status_check CHECK (status IN ('active', 'ended'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE INDEX IF NOT EXISTS products_status_idx ON products (store_id, status);
+
+-- Orders: short sequential ids (ORD-10001), per-line shipping, variation, courier and ship-by deadline.
+CREATE SEQUENCE IF NOT EXISTS order_number_seq START 10001;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS variation_id  text;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS shipping_cost numeric(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS courier_name  text;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS ship_by       date;
+ALTER TABLE order_items DROP CONSTRAINT IF EXISTS order_items_order_id_product_id_key;
+CREATE UNIQUE INDEX IF NOT EXISTS order_items_line_key ON order_items (order_id, product_id, COALESCE(variation_id, ''));
+
+-- Messages can carry photos and point at the listing / order they are about.
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS images     jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS product_id uuid REFERENCES products(id) ON DELETE SET NULL;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS order_id   text REFERENCES orders(id) ON DELETE SET NULL;
+ALTER TABLE messages ALTER COLUMN text SET DEFAULT '';
+
+-- Reviews show the reviewer's unique username, never their full name.
+UPDATE feedback f SET buyer_name = u.username FROM users u WHERE u.id = f.buyer_id AND f.buyer_name <> u.username;
+
+-- Bell-icon notifications for buyers and sellers.
+CREATE TABLE IF NOT EXISTS notifications (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type       text NOT NULL CHECK (type IN ('message', 'order')),
+  title      text NOT NULL,
+  body       text NOT NULL DEFAULT '',
+  link       text NOT NULL DEFAULT '',
+  read_at    timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications (user_id, created_at DESC);

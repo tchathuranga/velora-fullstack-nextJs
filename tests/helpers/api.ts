@@ -61,12 +61,23 @@ export async function createStore(ownerId: string, status: "active" | "under_rev
 
 export async function createProduct(
   storeId: string,
-  o: { price?: number; quantity?: number; deliveryFee?: number; freeDelivery?: boolean; paymentMethods?: string[] } = {},
+  o: {
+    price?: number;
+    quantity?: number;
+    deliveryFee?: number;
+    extraDeliveryFee?: number;
+    freeDelivery?: boolean;
+    paymentMethods?: string[];
+    handlingTime?: string;
+    status?: "active" | "ended";
+    variations?: unknown;
+  } = {},
 ) {
   const n = uniq();
   const product = await queryOne<{ id: string; slug: string }>(
-    `INSERT INTO products (slug, store_id, title, price, quantity, delivery_fee, free_delivery, payment_methods)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, slug`,
+    `INSERT INTO products (slug, store_id, title, price, quantity, delivery_fee, extra_delivery_fee, free_delivery, payment_methods,
+                           handling_time, status, variations)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, slug`,
     [
       `prod-${n}`,
       storeId,
@@ -74,8 +85,12 @@ export async function createProduct(
       o.price ?? 1000,
       o.quantity ?? 10,
       o.deliveryFee ?? 200,
+      o.extraDeliveryFee ?? 0,
       o.freeDelivery ?? false,
       o.paymentMethods ?? ["cod", "bank_transfer"],
+      o.handlingTime ?? "2-3 days",
+      o.status ?? "active",
+      o.variations ? JSON.stringify(o.variations) : null,
     ],
   );
   return product!;

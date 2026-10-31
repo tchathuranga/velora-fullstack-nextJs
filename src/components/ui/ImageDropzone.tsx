@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, X } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import clsx from "clsx";
 
 const REORDER_MIME = "application/x-photo-index";
@@ -16,6 +16,8 @@ interface ImageDropzoneProps {
   multiple?: boolean;
   /** Controlled preview URL. When provided, this component no longer tracks its own preview state. */
   preview?: string | null;
+  /** Shows a spinner and ignores clicks while the chosen image is being uploaded. */
+  busy?: boolean;
   /** This slot's position among a set of related dropzones. Enables drag-to-reorder when set. */
   index?: number;
   /** Called when an image from another slot (identified by index) is dragged onto this one. */
@@ -29,6 +31,7 @@ export function ImageDropzone({
   onFilesSelect,
   multiple,
   preview: controlledPreview,
+  busy,
   index,
   onReorder,
 }: ImageDropzoneProps) {
@@ -38,7 +41,7 @@ export function ImageDropzone({
   const preview = isControlled ? controlledPreview : internalPreview;
 
   const handleFiles = (files: FileList | File[] | null) => {
-    if (!files || files.length === 0) return;
+    if (busy || !files || files.length === 0) return;
     const fileArray = Array.from(files);
     if (fileArray.length > 1 && onFilesSelect) {
       onFilesSelect(fileArray);
@@ -61,7 +64,7 @@ export function ImageDropzone({
   return (
     <button
       type="button"
-      onClick={() => inputRef.current?.click()}
+      onClick={() => !busy && inputRef.current?.click()}
       draggable={canReorder && !!preview}
       onDragStart={(e) => {
         if (!canReorder || !preview) return;
@@ -88,20 +91,27 @@ export function ImageDropzone({
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={preview} alt="Uploaded preview" draggable={false} className="h-full w-full object-cover" />
-          <span
-            role="button"
-            onClick={clear}
-            aria-label="Remove image"
-            className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow hover:text-[var(--color-danger)]"
-          >
-            <X size={14} />
-          </span>
+          {!busy && (
+            <span
+              role="button"
+              onClick={clear}
+              aria-label="Remove image"
+              className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow hover:text-[var(--color-danger)]"
+            >
+              <X size={14} />
+            </span>
+          )}
         </>
       ) : (
         <>
           <Upload size={18} />
           <span className="px-1 text-center text-[11px] leading-tight">{label}</span>
         </>
+      )}
+      {busy && (
+        <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-[var(--color-primary)]">
+          <Loader2 size={20} className="animate-spin" />
+        </span>
       )}
       <input
         ref={inputRef}

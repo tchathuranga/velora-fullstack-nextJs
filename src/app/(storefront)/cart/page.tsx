@@ -1,17 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { ShoppingCart } from "lucide-react";
 import { useCart, MAX_CART_ITEMS } from "@/context/CartContext";
 import { CartItemRow } from "@/components/cart/CartItemRow";
-import { CartSummary, calculateDeliveryCost } from "@/components/cart/CartSummary";
+import { CartSummary } from "@/components/cart/CartSummary";
 import { Button } from "@/components/ui/Button";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useProducts } from "@/context/ProductsContext";
+import { buildLine, linesShipping, linesSubtotal } from "@/lib/checkout";
 
 export default function CartPage() {
-  const { items, subtotal, itemCount } = useCart();
+  const { items, itemCount } = useCart();
   const { products, loading } = useProducts();
+
+  const lines = useMemo(
+    () => items.map((item) => buildLine(item, products.find((p) => p.id === item.productId))),
+    [items, products],
+  );
 
   if (loading) return <PageLoader />;
 
@@ -32,16 +39,17 @@ export default function CartPage() {
       ) : (
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
           <div className="card divide-y divide-[var(--color-border)] px-5 lg:col-span-2">
-            {items.map((item) => (
-              <CartItemRow
-                key={item.productId}
-                item={item}
-                product={products.find((p) => p.id === item.productId)}
-              />
+            {lines.map((line) => (
+              <CartItemRow key={line.key} line={line} />
             ))}
           </div>
           <div>
-            <CartSummary subtotal={subtotal} itemCount={itemCount} deliveryCost={calculateDeliveryCost(items)} />
+            <CartSummary
+              subtotal={linesSubtotal(lines)}
+              itemCount={itemCount}
+              deliveryCost={linesShipping(lines)}
+              blocked={lines.some((l) => l.unavailable || l.stock === 0 || l.quantity > l.stock)}
+            />
             <p className="mt-3 text-center text-xs text-[var(--color-muted)]">
               {itemCount} / {MAX_CART_ITEMS} items in cart (maximum {MAX_CART_ITEMS} items can add to cart)
             </p>

@@ -27,7 +27,8 @@ describe("POST /api/orders", () => {
     );
     expect(res.status).toBe(201);
     expect(res.json).toMatchObject({ subtotal: 3400, deliveryCost: 300, total: 3700, paymentMethod: "cod", status: "processing" });
-    expect(res.json.id).toMatch(/^ORD-[A-Z0-9]{8}$/);
+    expect(res.json.buyerUsername).toBe(buyer.username);
+    expect(res.json.id).toMatch(/^ORD-\d{5,}$/);
     expect(res.json.items).toHaveLength(2);
 
     expect(await stock(a.id)).toBe(3);
@@ -37,7 +38,7 @@ describe("POST /api/orders", () => {
       "SELECT amount, confirmed FROM seller_transactions WHERE store_id = $1 AND order_item_id IN (SELECT id FROM order_items WHERE order_id = $2) ORDER BY amount",
       [store.id, res.json.id],
     );
-    expect(txns.map((t) => t.amount)).toEqual([400, 3000]);
+    expect(txns.map((t) => t.amount)).toEqual([400, 3300]); // item price + that listing's shipping
     expect(txns.every((t) => !t.confirmed)).toBe(true);
   });
 
@@ -77,7 +78,7 @@ describe("POST /api/orders", () => {
   it("never oversells under concurrent orders", async () => {
     const p = await createProduct(store.id, { quantity: 3 });
     const results = await Promise.all(
-      Array.from({ length: 6 }, () => order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing })),
+      Array.from({ length: 6 }, () => order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing }, buyer.cookie)),
     );
     expect(results.filter((r) => r.status === 201)).toHaveLength(3);
     expect(results.filter((r) => r.status === 409)).toHaveLength(3);
@@ -86,39 +87,44 @@ describe("POST /api/orders", () => {
 
   it("rejects unsupported payment methods, unavailable stores and unknown products", async () => {
     const codOnly = await createProduct(store.id, { paymentMethods: ["cod"] });
-    const bt = await order({ items: [{ productId: codOnly.id, quantity: 1 }], paymentMethod: "bank_transfer", billing });
+    const bt = await order({ items: [{ productId: codOnly.id, quantity: 1 }], paymentMethod: "bank_transfer", billing }, buyer.cookie);
     expect(bt.status).toBe(400);
 
     const pendingStore = await createStore((await createUser()).id, "under_review");
     const hidden = await createProduct(pendingStore.id);
-    const unavailable = await order({ items: [{ productId: hidden.id, quantity: 1 }], paymentMethod: "cod", billing });
+    const unavailable = await order({ items: [{ productId: hidden.id, quantity: 1 }], paymentMethod: "cod", billing }, buyer.cookie);
     expect(unavailable.status).toBe(409);
 
-    const missing = await order({ items: [{ productId: "00000000-0000-4000-8000-000000000000", quantity: 1 }], paymentMethod: "cod", billing });
+    const missing = await order({ items: [{ productId: "00000000-0000-4000-8000-000000000000", quantity: 1 }], paymentMethod: "cod", billing }, buyer.cookie);
     expect(missing.status).toBe(409);
   });
 
   it("validates the request body and blocks admins", async () => {
     const p = await createProduct(store.id);
-    expect((await order({ items: [], paymentMethod: "cod", billing })).status).toBe(400);
-    expect((await order({ items: [{ productId: p.id, quantity: 0 }], paymentMethod: "cod", billing })).status).toBe(400);
-    expect((await order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing: { ...billing, city: "" } })).status).toBe(400);
+    expect((await order({ items: [], paymentMethod: "cod", billing }, buyer.cookie)).status).toBe(400);
+    expect((await order({ items: [{ productId: p.id, quantity: 0 }], paymentMethod: "cod", billing }, buyer.cookie)).status).toBe(400);
+    expect(
+      (await order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing: { ...billing, city: "" } }, buyer.cookie)).status,
+    ).toBe(400);
 
     const admin = await createUser({ role: "admin" });
     const res = await order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing }, admin.cookie);
     expect(res.status).toBe(403);
   });
 
-  it("saves the billing address for signed-in buyers who ask, but not for guests", async () => {
+  it("requires an account — guests can't check out", async () => {
+    const p = await createProduct(store.id);
+    const res = await order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing });
+    expect(res.status).toBe(401);
+    expect(await stock(p.id)).toBe(10);
+  });
+
+  it("saves the billing address for signed-in buyers who ask", async () => {
     const p = await createProduct(store.id);
     const user = await createUser();
     await order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing, saveAddress: true }, user.cookie);
     const saved = await queryOne<{ city: string }>("SELECT city FROM user_addresses WHERE user_id = $1", [user.id]);
     expect(saved?.city).toBe("Colombo");
-
-    const guest = await order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing, saveAddress: true });
-    expect(guest.status).toBe(201);
-    expect(await queryOne("SELECT 1 FROM orders WHERE id = $1 AND buyer_id IS NULL AND save_address = false", [guest.json.id])).not.toBeNull();
   });
 });
 
@@ -170,12 +176,25 @@ describe("GET /api/orders/[id]", () => {
     expect((await call(getOrder, path, {}, params({ id: placed.json.id }))).status).toBe(404);
   });
 
-  it("serves guest orders to anyone holding the id, case-insensitively, and 404s unknown ids", async () => {
+  it("accepts the id case-insensitively and 404s unknown ids", async () => {
     const p = await createProduct(store.id);
-    const placed = await order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing });
+    const placed = await order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing }, buyer.cookie);
     const lower = placed.json.id.toLowerCase();
 
-    expect((await call(getOrder, `/api/orders/${lower}`, {}, params({ id: lower }))).status).toBe(200);
-    expect((await call(getOrder, "/api/orders/ORD-NOPE", {}, params({ id: "ORD-NOPE" }))).status).toBe(404);
+    expect((await call(getOrder, `/api/orders/${lower}`, { cookie: buyer.cookie }, params({ id: lower }))).status).toBe(200);
+    expect((await call(getOrder, "/api/orders/ORD-NOPE", { cookie: buyer.cookie }, params({ id: "ORD-NOPE" }))).status).toBe(404);
+  });
+
+  it("gives every order a unique, sequential ORD-##### id", async () => {
+    const p = await createProduct(store.id, { quantity: 20 });
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      const res = await order({ items: [{ productId: p.id, quantity: 1 }], paymentMethod: "cod", billing }, buyer.cookie);
+      ids.push(res.json.id);
+    }
+    expect(new Set(ids).size).toBe(3);
+    const numbers = ids.map((id) => Number(id.slice(4)));
+    expect(numbers[1]).toBe(numbers[0] + 1);
+    expect(numbers[2]).toBe(numbers[1] + 1);
   });
 });
