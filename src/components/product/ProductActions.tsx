@@ -32,6 +32,7 @@ export function ProductActions({
   const [justAdded, setJustAdded] = useState(false);
 
   const combinations = product.variations?.combinations ?? [];
+  const attributes = (product.variations?.attributes ?? []).filter((a) => a.options.length > 0);
   const price = combination?.price ?? product.price;
   const availableQty = combination?.quantity ?? product.quantity;
   const outOfStock = availableQty === 0;
@@ -60,7 +61,20 @@ export function ProductActions({
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-2xl font-bold text-slate-900">{formatCurrency(price)}</p>
+        <p className="flex flex-wrap items-baseline gap-x-3 text-2xl font-bold text-slate-900">
+          {formatCurrency(price)}
+          {!combination && product.compareAtPrice && (
+            <>
+              <span className="text-base font-normal text-[var(--color-muted)] line-through">{formatCurrency(product.compareAtPrice)}</span>
+              <span className="rounded bg-[var(--color-danger-light)] px-2 py-0.5 text-xs font-semibold text-[var(--color-danger)]">
+                {Math.round((1 - product.price / product.compareAtPrice) * 100)}% off
+              </span>
+            </>
+          )}
+        </p>
+        {!combination && product.saleEndsAt && (
+          <p className="text-xs text-[var(--color-muted)]">Sale ends {new Date(product.saleEndsAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+        )}
         <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm">
           {outOfStock ? (
             <span className="rounded-full bg-[var(--color-danger-light)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-danger)]">
@@ -73,18 +87,44 @@ export function ProductActions({
         </p>
       </div>
 
-      {combinations.length > 0 && (
-        <Select
-          label="Variation"
-          value={combination?.id ?? ""}
-          onChange={(e) => onSelectCombination(e.target.value)}
-        >
-          {combinations.map((c) => (
-            <option key={c.id} value={c.id} disabled={c.quantity === 0}>
-              {combinationLabel(c)} — {formatCurrency(c.price)} {c.quantity === 0 ? "(Out of stock)" : `(${c.quantity} available)`}
-            </option>
-          ))}
-        </Select>
+      {/* One dropdown per attribute (e.g. Color, Model); together they pick a single combination. */}
+      {combinations.length > 0 && combination && (
+        <div className="space-y-3">
+          {attributes.map((attr) => {
+            // Combinations that match the other dropdowns' current choices.
+            const others = combinations.filter((c) =>
+              attributes.every((a) => a.name === attr.name || c.values[a.name] === combination.values[a.name]),
+            );
+            return (
+              <Select
+                key={attr.name}
+                label={attr.name}
+                value={combination.values[attr.name] ?? ""}
+                onChange={(e) => {
+                  const target = { ...combination.values, [attr.name]: e.target.value };
+                  const exact = combinations.find((c) => attributes.every((a) => c.values[a.name] === target[a.name]));
+                  const fallback = combinations.find((c) => c.values[attr.name] === e.target.value && c.quantity > 0);
+                  const next = exact ?? fallback;
+                  if (next) onSelectCombination(next.id);
+                }}
+              >
+                {attr.options.map((option) => {
+                  const inStock = others.some((c) => c.values[attr.name] === option && c.quantity > 0);
+                  return (
+                    <option key={option} value={option} disabled={!inStock && option !== combination.values[attr.name]}>
+                      {option}
+                      {inStock ? "" : " (Out of stock)"}
+                    </option>
+                  );
+                })}
+              </Select>
+            );
+          })}
+          <p className="text-xs text-[var(--color-muted)]">
+            Selected: {combinationLabel(combination)}
+            {combination.quantity === 0 ? " — out of stock" : ` — ${combination.quantity} available`}
+          </p>
+        </div>
       )}
 
       <div className="flex items-center gap-3">

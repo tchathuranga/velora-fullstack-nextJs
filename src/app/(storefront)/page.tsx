@@ -1,31 +1,32 @@
 "use client";
 
 import { ImageBannerSlider } from "@/components/home/ImageBannerSlider";
-import { HeroBanners } from "@/components/home/HeroBanners";
+import { TrustBadges } from "@/components/home/TrustBadges";
 import { CategoryShowcase } from "@/components/home/CategoryShowcase";
-import { PromoBanner } from "@/components/home/PromoBanner";
 import { ProductSection } from "@/components/home/ProductSection";
+import { OnSaleSection } from "@/components/home/OnSaleSection";
 import { RecentlyViewedSection } from "@/components/home/RecentlyViewedSection";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { getProductsByTag } from "@/lib/data/products";
-import { useProducts } from "@/context/ProductsContext";
+import { useGetProductsPageQuery } from "@/Redux/api";
+
+const SECTION_SIZE = 12;
 
 export default function HomePage() {
-  const { products, loading } = useProducts();
+  // Each section asks the server for just its own few products; the home page never loads the whole catalog.
+  const newest = useGetProductsPageQuery({ section: "new", limit: SECTION_SIZE });
+  const deals = useGetProductsPageQuery({ section: "deal", limit: SECTION_SIZE });
 
-  if (loading) return <PageLoader />;
+  if (newest.isLoading || deals.isLoading) return <PageLoader />;
 
   return (
     <div className="container-page">
       <ImageBannerSlider />
-      <HeroBanners />
+      <TrustBadges />
       <CategoryShowcase />
-      <RecentlyViewedSection products={products} />
-      <ProductSection id="trending" title="Trending Ones" products={getProductsByTag(products, "trending", 12)} />
-      <ProductSection id="new-arrivals" title="New arrivals" products={getProductsByTag(products, "new", 12)} />
-      <ProductSection id="todays-deal" title="Today's deal" products={getProductsByTag(products, "deal", 12)} />
-      <ProductSection id="on-sale" title="On sale" products={getProductsByTag(products, "sale", 12)} />
+      <RecentlyViewedSection />
+      <ProductSection id="new-arrivals" title="New arrivals" products={newest.data?.items ?? []} />
+      <ProductSection id="todays-deal" title="Today's deal" products={deals.data?.items ?? []} />
+      <OnSaleSection id="on-sale" title="On sale" />
     </div>
   );
 }
-       

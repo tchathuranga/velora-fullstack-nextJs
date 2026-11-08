@@ -7,13 +7,27 @@ interface CloudinaryConfig {
   apiSecret: string;
 }
 
+/** Trims whitespace and surrounding quotes, which are easy to paste into a host's env-var form by mistake. */
+function cleanEnv(value: string | undefined): string | undefined {
+  return value?.trim().replace(/^["']|["']$/g, "").trim();
+}
+
 export function cloudinaryConfig(): CloudinaryConfig {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const rawSecret = process.env.CLOUDINARY_API_SECRET;
+  const cloudName = cleanEnv(process.env.CLOUDINARY_CLOUD_NAME);
+  const apiKey = cleanEnv(process.env.CLOUDINARY_API_KEY);
+  const apiSecret = cleanEnv(rawSecret);
   if (!cloudName || !apiKey || !apiSecret) {
     throw new ApiError(503, "Image uploads aren't configured yet.");
   }
+  // TEMP diagnostic: never logs the secret itself. Remove once uploads work on Render.
+  console.log("[cloudinary] config check", {
+    cloudName,
+    apiKeyLength: apiKey.length,
+    secretLength: apiSecret.length,
+    rawSecretLength: rawSecret?.length,
+    secretHadWhitespaceOrQuotes: rawSecret !== apiSecret,
+  });
   return { cloudName, apiKey, apiSecret };
 }
 

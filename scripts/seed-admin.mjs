@@ -2,6 +2,7 @@
 // Usage: npm run db:seed-admin
 import bcrypt from "bcryptjs";
 import pg from "pg";
+import { sslFor } from "./lib/pg-ssl.mjs";
 
 const { DATABASE_URL, ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
 if (!DATABASE_URL || !ADMIN_USERNAME || !ADMIN_PASSWORD) {
@@ -13,8 +14,7 @@ if (ADMIN_PASSWORD.length < 8) {
   process.exit(1);
 }
 
-const local = /localhost|127\.0\.0\.1/.test(DATABASE_URL);
-const client = new pg.Client({ connectionString: DATABASE_URL, ssl: local ? false : { rejectUnauthorized: false } });
+const client = new pg.Client({ connectionString: DATABASE_URL, ssl: sslFor(DATABASE_URL) });
 
 await client.connect();
 try {

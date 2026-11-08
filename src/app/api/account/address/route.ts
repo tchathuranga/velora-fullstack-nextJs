@@ -11,7 +11,7 @@ export const PUT = route(async (req) => {
   await query(
     `INSERT INTO user_addresses (user_id, full_name, street, city, province, phone1, phone2, zip_code, email)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     ON CONFLICT (user_id) DO UPDATE SET full_name = $2, street = $3, city = $4, province = $5,
+     ON CONFLICT (user_id) WHERE is_default DO UPDATE SET full_name = $2, street = $3, city = $4, province = $5,
        phone1 = $6, phone2 = $7, zip_code = $8, email = $9, updated_at = now()`,
     [session.userId, a.fullName, a.street, a.city, a.province, a.phone1, a.phone2, a.zipCode, a.email || null],
   );

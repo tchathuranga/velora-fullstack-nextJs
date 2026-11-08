@@ -5,6 +5,7 @@
 // categories/banners/products/stores are removed with their owners. The real admin account is never touched.
 import bcrypt from "bcryptjs";
 import pg from "pg";
+import { sslFor } from "./lib/pg-ssl.mjs";
 
 const { DATABASE_URL } = process.env;
 if (!DATABASE_URL) {
@@ -14,8 +15,7 @@ if (!DATABASE_URL) {
 const PASSWORD = "Demo@1234";
 const reset = process.argv.includes("--reset");
 
-const local = /localhost|127\.0\.0\.1/.test(DATABASE_URL);
-const db = new pg.Client({ connectionString: DATABASE_URL, ssl: local ? false : { rejectUnauthorized: false } });
+const db = new pg.Client({ connectionString: DATABASE_URL, ssl: sslFor(DATABASE_URL) });
 const q = async (text, params = []) => (await db.query(text, params)).rows;
 const one = async (text, params = []) => (await q(text, params))[0];
 
@@ -112,8 +112,8 @@ try {
     products.push(
       await one(
         `INSERT INTO products (slug, store_id, category_id, subcategory_id, title, price, quantity, brand, description,
-                              handling_time, delivery_time, delivery_fee, free_delivery, payment_methods, location, tags)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '1-2 days', '3-5 days', $10, $11, '{cod,bank_transfer}', 'Colombo', $12)
+                              handling_days_min, handling_days_max, delivery_days_min, delivery_days_max, delivery_fee, free_delivery, payment_methods, location, tags)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, 2, 3, 5, $10, $11, '{cod,bank_transfer}', 'Colombo', $12)
          RETURNING id, store_id, title, price, delivery_fee, free_delivery`,
         [slug, store.id, subs[sub].categoryId, subs[sub].subcategoryId, title, price, quantity, brand, `${title} — demo listing.`, fee, free, ["demo", sub.toLowerCase()]],
       ),
@@ -129,30 +129,32 @@ try {
   ];
   for (const [id, buyer, method, status, lines] of ORDERS) {
     const items = lines.map(([i, qty]) => ({ p: products[i], qty }));
-    const subtotal = items.reduce((s, { p, qty }) => s + p.price * qty, 0);
-    const delivery = items.reduce((s, { p }) => s + (p.free_delivery ? 0 : p.delivery_fee), 0);
+    // pg returns NUMERIC as strings, so convert before adding (otherwise "+" concatenates).
+    const subtotal = items.reduce((s, { p, qty }) => s + Number(p.price) * qty, 0);
+    const delivery = items.reduce((s, { p }) => s + (p.free_delivery ? 0 : Number(p.delivery_fee)), 0);
     const name = buyer ? (buyer === buyers[0] ? "Nimal Perera" : "Kasun Silva") : "Guest Shopper";
-    const billing = { fullName: name, street: "5 Temple Road", city: "Kandy", province: "Central", phone1: "0771112223", phone2: "", zipCode: "20000" };
-    const steps = [
-      { label: "Order placed", done: true, date: new Date().toISOString().slice(0, 10) },
-      { label: "Handed to courier", done: status !== "processing" },
-      { label: "Out for delivery", done: status === "delivered" },
-      { label: "Delivered", done: status === "delivered" },
-    ];
+    const today = new Date().toISOString().slice(0, 10);
     await q(
-      `INSERT INTO orders (id, buyer_id, buyer_name, subtotal, delivery_cost, total, payment_method, billing, status, tracking_steps)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-      [id, buyer?.id ?? null, name, subtotal, delivery, subtotal + delivery, method, JSON.stringify(billing), status, JSON.stringify(steps)],
+      `INSERT INTO orders (id, buyer_id, buyer_name, subtotal, delivery_cost, total, payment_method, status,
+                           billing_full_name, billing_street, billing_city, billing_province, billing_phone1, billing_phone2, billing_zip_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $3, '5 Temple Road', 'Kandy', 'Central', '0771112223', '', '20000')`,
+      [id, buyer?.id ?? null, name, subtotal, delivery, subtotal + delivery, method, status],
     );
+    const milestones = ["placed", ...(status !== "processing" ? ["handed_to_courier"] : []), ...(status === "delivered" ? ["out_for_delivery", "delivered"] : [])];
+    for (const type of milestones) await q("INSERT INTO order_events (order_id, type, occurred_on) VALUES ($1, $2, $3)", [id, type, today]);
     for (const [n, { p, qty }] of items.entries()) {
       const item = await one(
-        "INSERT INTO order_items (order_id, product_id, store_id, title, price, quantity, tracking_number) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
-        [id, p.id, p.store_id, p.title, p.price, qty, status === "processing" ? null : `TRK${id.slice(-4)}${n}`],
+        "INSERT INTO order_items (order_id, product_id, store_id, title, price, quantity) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+        [id, p.id, p.store_id, p.title, p.price, qty],
       );
+      if (status !== "processing") {
+        await q("INSERT INTO shipments (order_item_id, tracking_number, courier_name) VALUES ($1, $2, 'Demo Courier')", [item.id, `TRK${id.slice(-4)}${n}`]);
+      }
+      const amount = p.price * qty;
       await q(
-        `INSERT INTO seller_transactions (id, order_item_id, store_id, product_title, payment_method, amount, confirmed, confirmed_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $7 THEN now() END)`,
-        [`TXN-${id.slice(4)}-${n + 1}`, item.id, p.store_id, p.title, method, p.price * qty, status === "delivered"],
+        `INSERT INTO seller_transactions (id, order_item_id, store_id, product_title, payment_method, amount, fee_rate, fee_amount, confirmed, confirmed_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 0.03, round($6::numeric * 0.03, 2), $7, CASE WHEN $7 THEN now() END)`,
+        [`TXN-${id.slice(4)}-${n + 1}`, item.id, p.store_id, p.title, method, amount, status === "delivered"],
       );
       await q("UPDATE products SET quantity = quantity - $2 WHERE id = $1", [p.id, qty]);
     }

@@ -1,3 +1,4 @@
+import { audit } from "@/server/audit";
 import { requireAdmin } from "@/server/auth";
 import { queryOne } from "@/server/db";
 import { isUuid, notFound, ok, parseBody, route } from "@/server/http";
@@ -24,10 +25,11 @@ export const PATCH = route(async (req, ctx: RouteContext<"/api/admin/banners/[id
 });
 
 export const DELETE = route(async (req, ctx: RouteContext<"/api/admin/banners/[id]">) => {
-  await requireAdmin(req);
+  const session = await requireAdmin(req);
   const { id } = await ctx.params;
   if (!isUuid(id)) throw notFound("Banner not found.");
-  const row = await queryOne("DELETE FROM banners WHERE id = $1 RETURNING id", [id]);
+  const row = await queryOne<{ title: string }>("DELETE FROM banners WHERE id = $1 RETURNING title", [id]);
   if (!row) throw notFound("Banner not found.");
+  await audit(session, "banner.deleted", "banner", id, { title: row.title });
   return ok({ ok: true });
 });

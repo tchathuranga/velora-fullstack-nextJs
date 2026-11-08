@@ -8,7 +8,7 @@ export const GET = route(async (req) => {
   await requireAdmin(req);
   const [transactions, payouts] = await Promise.all([
     query<TransactionRow>(
-      `SELECT id, store_id, product_title, payment_method, amount, confirmed, created_at
+      `SELECT id, store_id, product_title, payment_method, amount, fee_rate, fee_amount, confirmed, payout_id, created_at
          FROM seller_transactions ORDER BY created_at DESC`,
     ),
     query<{ store_id: string; paid_out: number }>(

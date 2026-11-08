@@ -131,7 +131,7 @@ export default function AccountPage() {
       </section>
 
       <div className="mt-6">
-        <RecentlyViewedSection products={products} />
+        <RecentlyViewedSection />
       </div>
     </div>
   );

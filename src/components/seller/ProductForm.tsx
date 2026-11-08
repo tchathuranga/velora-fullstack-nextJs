@@ -55,6 +55,8 @@ export function ProductForm({ product }: { product?: Product }) {
     categoryId,
     subcategoryId,
     price,
+    compareAtPrice,
+    saleEndsAt,
     quantity,
     images,
     brand,
@@ -129,12 +131,18 @@ export function ProductForm({ product }: { product?: Product }) {
     }
     if (paymentMethods.length === 0) return setFormError("Select at least one payment method.");
     if (!returnsAccepted) return setFormError("Please accept the return policy to continue.");
+    if (!hasVariations && compareAtPrice && Number(compareAtPrice) <= Number(price)) {
+      return setFormError("The original price must be higher than the selling price.");
+    }
 
     const input: CreateProductInput = {
       title,
       categoryId: categoryId || null,
       subcategoryId: subcategoryId || null,
       price: Number(price) || 0,
+      // A sale: the original price, optionally with the day it ends (the end of that day in Sri Lanka).
+      compareAtPrice: !hasVariations && compareAtPrice ? Number(compareAtPrice) : null,
+      saleEndsAt: !hasVariations && compareAtPrice && saleEndsAt ? `${saleEndsAt}T23:59:59+05:30` : null,
       quantity: Math.max(0, Math.floor(Number(quantity)) || 0),
       brand: brand.trim(),
       condition,
@@ -189,7 +197,7 @@ export function ProductForm({ product }: { product?: Product }) {
 
   if (step === "images" && variations) {
     const options = new Set(variations.attributes.flatMap((a) => a.options));
-    const keepUsed = (imgs: Record<string, string>) => Object.fromEntries(Object.entries(imgs).filter(([option]) => options.has(option)));
+    const keepUsed = (imgs: Record<string, string[]>) => Object.fromEntries(Object.entries(imgs).filter(([option]) => options.has(option)));
     return (
       <div className="container-page max-w-4xl space-y-8 py-10">
         <div className="card p-6">
@@ -296,6 +304,7 @@ export function ProductForm({ product }: { product?: Product }) {
             Price and quantity are set for each variation below.
           </p>
         ) : (
+          <>
           <div className="grid gap-5 sm:grid-cols-2">
             <Input
               label="Price"
@@ -317,6 +326,27 @@ export function ProductForm({ product }: { product?: Product }) {
               onChange={(e) => dispatch(setField({ field: "quantity", value: e.target.value }))}
             />
           </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Input
+              label="Original price (optional)"
+              type="number"
+              min={0}
+              step="any"
+              value={compareAtPrice}
+              hint="Put the price before your discount here to run a sale. It is shown crossed out next to the price above."
+              onChange={(e) => dispatch(setField({ field: "compareAtPrice", value: e.target.value }))}
+            />
+            {compareAtPrice && (
+              <Input
+                label="Sale ends (optional)"
+                type="date"
+                value={saleEndsAt}
+                hint="Leave empty for a sale with no end date."
+                onChange={(e) => dispatch(setField({ field: "saleEndsAt", value: e.target.value }))}
+              />
+            )}
+          </div>
+          </>
         )}
 
         {variations ? (

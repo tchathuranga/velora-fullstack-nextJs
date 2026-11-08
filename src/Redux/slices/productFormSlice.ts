@@ -14,6 +14,10 @@ export interface ProductFormState {
   categoryId: string;
   subcategoryId: string;
   price: string;
+  /** Original price for a sale (optional). */
+  compareAtPrice: string;
+  /** Sale end date, YYYY-MM-DD (optional). */
+  saleEndsAt: string;
   quantity: string;
   /** Hosted (Cloudinary) URLs in display order; the first is the main image. */
   images: string[];
@@ -44,6 +48,8 @@ const initialState: ProductFormState = {
   categoryId: "",
   subcategoryId: "",
   price: "",
+  compareAtPrice: "",
+  saleEndsAt: "",
   quantity: "",
   images: [],
   brand: "",
@@ -69,6 +75,8 @@ type TextField =
   | "title"
   | "subcategoryId"
   | "price"
+  | "compareAtPrice"
+  | "saleEndsAt"
   | "quantity"
   | "brand"
   | "conditionCustom"
@@ -148,6 +156,8 @@ const productFormSlice = createSlice({
         categoryId: p.categoryId ?? "",
         subcategoryId: p.subcategoryId ?? "",
         price: String(p.price),
+        compareAtPrice: p.compareAtPrice ? String(p.compareAtPrice) : "",
+        saleEndsAt: p.saleEndsAt ? p.saleEndsAt.slice(0, 10) : "",
         quantity: String(p.quantity),
         images: p.images ?? [],
         brand: p.brand ?? "",

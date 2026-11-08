@@ -2,8 +2,11 @@ export function formatCurrency(amount: number): string {
   return `Rs. ${amount.toLocaleString("en-LK", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
+/** The marketplace commission on each sale. Every transaction records the rate it was actually charged (see seller_transactions.fee_rate). */
+export const TRANSACTION_FEE_RATE = 0.03;
+
 export function calcTransactionFee(amount: number): number {
-  return Math.round(amount * 0.03 * 100) / 100;
+  return Math.round(amount * TRANSACTION_FEE_RATE * 100) / 100;
 }
 
 export function calcNetSale(amount: number): number {
@@ -59,4 +62,15 @@ export function statusLabel(status: string): string {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+/**
+ * Variation values as a readable label for order lines ("Color: Red, Size: M"). Postgres jsonb does not keep key order,
+ * so values read back from the database are sorted by name and labelled, which reads the same every time.
+ */
+export function variationLabel(values: Record<string, string>): string {
+  return Object.entries(values)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, value]) => `${name}: ${value}`)
+    .join(", ");
 }

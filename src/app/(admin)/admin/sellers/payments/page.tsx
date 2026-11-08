@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { calcTransactionFee, calcNetSale, formatCurrency, formatDate, nextBiweeklyMonday } from "@/lib/utils";
+import { formatCurrency, formatDate, nextBiweeklyMonday } from "@/lib/utils";
 
 export default function AdminSellerPaymentsPage() {
   const { stores, loading: storesLoading } = useStores();
@@ -61,11 +61,11 @@ export default function AdminSellerPaymentsPage() {
     const amount = confirmed.reduce((sum, tx) => sum + tx.amount, 0);
     const bankFee = confirmed
       .filter((tx) => tx.paymentMethod === "bank_transfer")
-      .reduce((sum, tx) => sum + calcTransactionFee(tx.amount), 0);
+      .reduce((sum, tx) => sum + tx.feeAmount, 0);
     const codFee = confirmed
       .filter((tx) => tx.paymentMethod === "cod")
-      .reduce((sum, tx) => sum + calcTransactionFee(tx.amount), 0);
-    const netSale = confirmed.reduce((sum, tx) => sum + calcNetSale(tx.amount), 0);
+      .reduce((sum, tx) => sum + tx.feeAmount, 0);
+    const netSale = confirmed.reduce((sum, tx) => sum + (tx.amount - tx.feeAmount), 0);
     return { amount, bankFee, codFee, netSale };
   }, [transactions]);
 

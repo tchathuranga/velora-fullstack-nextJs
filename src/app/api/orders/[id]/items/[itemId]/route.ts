@@ -17,23 +17,26 @@ export const PATCH = route(async (req, ctx: RouteContext<"/api/orders/[id]/items
   const id = rawId.toUpperCase();
 
   await withTransaction(async (client) => {
-    const { rowCount } = await client.query(
-      "UPDATE order_items SET tracking_number = $4, courier_name = $5 WHERE order_id = $1 AND id = $2 AND store_id = $3",
-      [id, itemId, session.storeId, trackingNumber, courierName],
+    const line = await client.query("SELECT id FROM order_items WHERE order_id = $1 AND id = $2 AND store_id = $3", [id, itemId, session.storeId]);
+    if (!line.rowCount) throw notFound("Order item not found.");
+    // One shipment per order line; saving again edits the courier / tracking number.
+    await client.query(
+      `INSERT INTO shipments (order_item_id, tracking_number, courier_name) VALUES ($1, $2, $3)
+       ON CONFLICT (order_item_id) DO UPDATE SET tracking_number = EXCLUDED.tracking_number, courier_name = EXCLUDED.courier_name`,
+      [itemId, trackingNumber, courierName],
     );
-    if (!rowCount) throw notFound("Order item not found.");
 
-    const { rows } = await client.query<{
-      status: string;
-      buyer_id: string | null;
-      tracking_steps: { label: string; done: boolean; date?: string }[];
-    }>("SELECT status, buyer_id, tracking_steps FROM orders WHERE id = $1 FOR UPDATE", [id]);
+    const { rows } = await client.query<{ status: string; buyer_id: string | null }>(
+      "SELECT status, buyer_id FROM orders WHERE id = $1 FOR UPDATE",
+      [id],
+    );
     const order = rows[0];
     if (order?.status === "processing") {
-      const steps = order.tracking_steps.map((s) =>
-        s.label === "Handed to courier" ? { ...s, done: true, date: todayInColombo() } : s,
+      await client.query(
+        "INSERT INTO order_events (order_id, type, occurred_on) VALUES ($1, 'handed_to_courier', $2) ON CONFLICT (order_id, type) DO NOTHING",
+        [id, todayInColombo()],
       );
-      await client.query("UPDATE orders SET status = 'shipped', tracking_steps = $2 WHERE id = $1", [id, JSON.stringify(steps)]);
+      await client.query("UPDATE orders SET status = 'shipped' WHERE id = $1", [id]);
       if (order.buyer_id) {
         await notify(
           {

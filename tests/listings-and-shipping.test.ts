@@ -84,12 +84,9 @@ describe("variations", () => {
     expect(res.json).toMatchObject({ subtotal: 1800, deliveryCost: 400 });
     expect(res.json.items[0]).toMatchObject({ variation: { Color: "Red" }, variationId: "var-red", price: 900 });
 
-    const row = await queryOne<{ quantity: number; variations: { combinations: { id: string; quantity: number }[] } }>(
-      "SELECT quantity, variations FROM products WHERE id = $1",
-      [p.id],
-    );
-    expect(row!.quantity).toBe(1);
-    expect(row!.variations.combinations.find((c) => c.id === "var-red")!.quantity).toBe(1);
+    expect(await stockOf(p.id)).toBe(1);
+    const variant = await queryOne<{ quantity: number }>("SELECT quantity FROM product_variants WHERE product_id = $1 AND id = 'var-red'", [p.id]);
+    expect(variant!.quantity).toBe(1);
   });
 
   it("requires a variation choice and rejects sold-out or unknown variations", async () => {
@@ -168,7 +165,7 @@ describe("shipping details", () => {
     expect(done.status).toBe(200);
 
     const row = await queryOne<{ tracking_number: string; courier_name: string }>(
-      "SELECT tracking_number, courier_name FROM order_items WHERE id = $1",
+      "SELECT tracking_number, courier_name FROM shipments WHERE order_item_id = $1",
       [itemId],
     );
     expect(row).toEqual({ tracking_number: "IND123456", courier_name: "Farder" });
@@ -231,6 +228,48 @@ describe("listing lifecycle", () => {
     const res = await call(editProduct, `/api/products/${slug}`, { method: "PATCH", cookie: seller.cookie, body: withVariations }, params({ slug }));
     expect(res.json).toMatchObject({ quantity: 5, price: 800 });
     expect(res.json.variations.combinations).toHaveLength(2);
+  });
+
+  it("runs a priced sale: shows the original price, tags it, and rejects impossible sales", async () => {
+    const post = (extra: object) => call(createListing, "/api/products", { method: "POST", cookie: seller.cookie, body: { ...listing, price: 800, ...extra } });
+    const future = new Date(Date.now() + 3 * 86_400_000).toISOString();
+
+    const sale = await post({ compareAtPrice: 1000, saleEndsAt: future });
+    expect(sale.status).toBe(201);
+    expect(sale.json).toMatchObject({ price: 800, compareAtPrice: 1000 });
+    expect(sale.json.saleEndsAt).toBeTruthy();
+    expect(sale.json.tags).toContain("sale");
+
+    expect((await post({ compareAtPrice: 800 })).status).toBe(400); // not higher than the price
+    expect((await post({ compareAtPrice: 700 })).status).toBe(400);
+    expect((await post({ compareAtPrice: 1000, saleEndsAt: new Date(Date.now() - 86_400_000).toISOString() })).status).toBe(400); // already over
+    const withVariations = await post({
+      compareAtPrice: 1000,
+      variations: { attributes: [{ name: "Size", options: ["S"] }], images: {}, combinations: [{ id: "v", values: { Size: "S" }, quantity: 1, price: 500 }] },
+    });
+    expect(withVariations.status).toBe(400);
+
+    const plain = await post({});
+    expect(plain.json.compareAtPrice).toBeUndefined();
+    expect(plain.json.tags).not.toContain("sale");
+
+    // The sale ends by itself once its end date has passed.
+    await queryOne("UPDATE products SET sale_ends_at = now() - interval '1 minute' WHERE id = $1", [sale.json.id]);
+    const after = (await call(listProducts, "/api/products")).json.find((p: { id: string }) => p.id === sale.json.id);
+    expect(after.compareAtPrice).toBeUndefined();
+    expect(after.tags).not.toContain("sale");
+  });
+
+  it("stores handling and delivery time as days and serves them back as text", async () => {
+    const post = (handlingTime: string, deliveryTime: string) =>
+      call(createListing, "/api/products", { method: "POST", cookie: seller.cookie, body: { ...listing, handlingTime, deliveryTime } });
+    const a = await post("2-3 days", "3-5 days");
+    expect(a.json).toMatchObject({ handlingTime: "2-3 days", deliveryTime: "3-5 days" });
+    const row = await queryOne<Record<string, number>>("SELECT handling_days_min, handling_days_max, delivery_days_min, delivery_days_max FROM products WHERE id = $1", [a.json.id]);
+    expect(row).toEqual({ handling_days_min: 2, handling_days_max: 3, delivery_days_min: 3, delivery_days_max: 5 });
+    expect((await post("1 day", "5 business days")).json).toMatchObject({ handlingTime: "1 day", deliveryTime: "5 days" });
+    expect((await post("soon", "3 days")).status).toBe(400);
+    expect((await post("2 days", "ten days")).status).toBe(400); // no number
   });
 
   it("ends a listing into Unsold, hides it from buyers, and relists it", async () => {

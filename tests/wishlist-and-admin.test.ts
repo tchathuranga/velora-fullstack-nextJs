@@ -85,3 +85,37 @@ describe("PATCH /api/admin/stores/[id]", () => {
     expect((await queryOne<{ status: string }>("SELECT status FROM stores WHERE id = $1", [store.id]))!.status).toBe("under_review");
   });
 });
+
+describe("DELETE /api/admin/users/[id]", () => {
+  it("deletes an account with no financial history", async () => {
+    const admin = await createUser({ role: "admin" });
+    const buyer = await createUser();
+    const { DELETE: deleteUser } = await import("@/app/api/admin/users/[id]/route");
+    const res = await call(deleteUser, `/api/admin/users/${buyer.id}`, { method: "DELETE", cookie: admin.cookie }, params({ id: buyer.id }));
+    expect(res.status).toBe(200);
+    expect(await queryOne("SELECT 1 FROM users WHERE id = $1", [buyer.id])).toBeNull();
+  });
+
+  it("refuses (409) to delete a seller whose store has order history, and keeps that history", async () => {
+    const admin = await createUser({ role: "admin" });
+    const seller = await createUser();
+    const store = await createStore(seller.id);
+    const product = await createProduct(store.id);
+    await queryOne(
+      `INSERT INTO orders (id, buyer_name, subtotal, delivery_cost, total, payment_method,
+                           billing_full_name, billing_street, billing_city, billing_province, billing_phone1, billing_zip_code)
+       VALUES ('ORD-DEL1', 'Guest', 100, 0, 100, 'cod', 'Guest', 'x', 'x', 'x', '0', '0')`,
+    );
+    await queryOne("INSERT INTO order_items (order_id, product_id, store_id, title, price, quantity) VALUES ('ORD-DEL1', $1, $2, 'x', 100, 1)", [
+      product.id,
+      store.id,
+    ]);
+
+    const { DELETE: deleteUser } = await import("@/app/api/admin/users/[id]/route");
+    const res = await call(deleteUser, `/api/admin/users/${seller.id}`, { method: "DELETE", cookie: admin.cookie }, params({ id: seller.id }));
+    expect(res.status).toBe(409);
+    expect(res.json.error).toMatch(/orders, payments or payouts/);
+    expect(await queryOne("SELECT 1 FROM users WHERE id = $1", [seller.id])).not.toBeNull();
+    expect(await queryOne("SELECT 1 FROM order_items WHERE order_id = 'ORD-DEL1'")).not.toBeNull();
+  });
+});

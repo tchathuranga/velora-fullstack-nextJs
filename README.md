@@ -12,12 +12,14 @@ PostgreSQL via `pg`, Redux Toolkit (RTK Query) on the frontend. See [APPLICATION
    | `DATABASE_URL` | PostgreSQL connection string |
    | `JWT_SECRET` | Random string, 32+ chars — signs the session cookie |
    | `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_EMAIL` | Used only by `db:seed-admin` (password 8+ chars) |
+   | `BANK_DETAILS_KEY` | 32 random bytes as base64 (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`) — encrypts sellers' bank details. **Required in production**; store it only in the host's environment, never in git or the database. Losing it makes stored bank details unreadable. |
+   | `DATABASE_SSL`, `DATABASE_CA_CERT` | Optional. `DATABASE_SSL=verify` makes the database connection verify the server certificate (add the provider's CA certificate in `DATABASE_CA_CERT` if needed). Default: encrypted without certificate checks. |
    | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Image hosting for profile / cover photos, product photos (including photos inside descriptions and variations) and message photos. **Set these in every environment you deploy to** — without them uploads fail with "Image uploads aren't configured yet." |
 
 2. Create the tables and the admin account (both idempotent):
 
    ```bash
-   npm run db:migrate       # applies db/schema.sql
+   npm run db:reset         # WIPES the DB, applies db/schema.sql, loads test data
    npm run db:seed-admin    # creates/updates the admin from the ADMIN_* variables
    ```
 
@@ -35,12 +37,12 @@ Contact details and the bank accounts shown to bank-transfer buyers live in the 
 - **Shipping** is per listing: first-item fee + additional-item fee × (units − 1); free-shipping listings charge nothing (`src/lib/shipping.ts`, shared by browser and server).
 - **Delivery estimate** = purchase date + handling time + delivery time (days are read from the seller's text, e.g. "2-3 days"). The seller's **ship-by** date is the order date + the maximum handling time and is stored on each order line.
 - **Listings** are `active` or `ended`. Ending a listing moves it to the seller's *Unsold* section and hides it from buyers; running out of stock does not.
-- **Seller earnings** = item price + shipping − 3% website fee of (item price + shipping).
+- **Seller earnings** = item price + shipping − 3% won fee of (item price + shipping).
 - **Notifications** (bell icon) are stored in `notifications`: sellers are told about new orders and buyer messages, buyers about seller messages and shipped orders.
 
 ## Architecture
 
-- **Database** — `db/schema.sql`: users, user_addresses, stores, categories, subcategories, banners, products,
+- **Database** — `db/schema.sql` (see docs/DATABASE.md): users, user_addresses, stores, categories, subcategories, banners, products,
   orders, order_items, seller_transactions, seller_payouts, wishlist_items, feedback, conversations, messages,
   site_settings. A seller is a user who owns an approved store.
 - **API** — route handlers under `src/app/api/**`; shared server code in `src/server/` (db pool, session/JWT cookie,

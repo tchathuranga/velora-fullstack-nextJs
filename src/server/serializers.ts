@@ -1,3 +1,4 @@
+import { decryptBankDetails } from "./crypto";
 import type {
   Address,
   BankDetails,
@@ -34,8 +35,11 @@ export interface StoreRow {
   email: string;
   about_store: string;
   status: SellerStatus;
-  bank_details: BankDetails;
+  /** Plaintext form, only on rows saved before encryption was introduced (see scripts/bank-details.mjs). */
+  bank_details: BankDetails | null;
   bank_details_optional: BankDetails | null;
+  bank_details_enc: string | null;
+  bank_details_optional_enc: string | null;
   cover_color: string;
   profile_color: string;
   cover_image_url: string | null;
@@ -47,10 +51,15 @@ export interface StoreRow {
   order_amount: number;
 }
 
+/** The encrypted form when there is one, else the legacy plaintext. */
+function readBank(encrypted: string | null, plain: BankDetails | null): BankDetails | null {
+  return encrypted ? decryptBankDetails<BankDetails>(encrypted) : plain;
+}
+
 /** Select list shared by every store query; stats are computed live from products / order_items. */
 export const STORE_SELECT = `
   s.id, s.slug, s.store_name, s.business_name, s.full_name, s.address, s.telephone, s.email, s.about_store,
-  s.status, s.bank_details, s.bank_details_optional, s.cover_color, s.profile_color, s.cover_image_url, s.profile_image_url, s.created_at,
+  s.status, s.bank_details, s.bank_details_optional, s.bank_details_enc, s.bank_details_optional_enc, s.cover_color, s.profile_color, s.cover_image_url, s.profile_image_url, s.created_at,
   (SELECT count(*) FROM products p WHERE p.store_id = s.id AND p.status = 'active') AS active_listings,
   (SELECT count(*) FROM products p WHERE p.store_id = s.id AND p.status = 'ended') AS unsold_listings,
   (SELECT count(DISTINCT oi.order_id) FROM order_items oi WHERE oi.store_id = s.id) AS orders,
@@ -83,8 +92,11 @@ export function toStore(row: StoreRow, includePrivate: boolean): Store {
     address: includePrivate ? row.address : "",
     telephone: includePrivate ? row.telephone : "",
     email: includePrivate ? row.email : "",
-    bankDetails: includePrivate ? row.bank_details : EMPTY_BANK,
-    ...(includePrivate && row.bank_details_optional ? { bankDetailsOptional: row.bank_details_optional } : {}),
+    // Decrypted only for the owner and admins, so public responses never need the key.
+    bankDetails: includePrivate ? (readBank(row.bank_details_enc, row.bank_details) ?? EMPTY_BANK) : EMPTY_BANK,
+    ...(includePrivate && (row.bank_details_optional_enc || row.bank_details_optional)
+      ? { bankDetailsOptional: readBank(row.bank_details_optional_enc, row.bank_details_optional)! }
+      : {}),
   };
 }
 
@@ -143,8 +155,14 @@ export interface ProductRow {
   package_include: string | null;
   custom_specs: SpecEntry[];
   description: string;
-  handling_time: string;
-  delivery_time: string;
+  handling_days_min: number;
+  handling_days_max: number;
+  delivery_days_min: number;
+  delivery_days_max: number;
+  compare_at_price: number | null;
+  sale_ends_at: Date | null;
+  /** Derived in SQL: the original price is above the price and the sale has not ended. */
+  on_sale: boolean;
   delivery_fee: number;
   free_delivery: boolean;
   payment_methods: PaymentMethod[];
@@ -157,35 +175,57 @@ export interface ProductRow {
   created_at: Date;
   rating: number;
   review_count: number;
-  sold_30d: number;
+  last_sold_at: Date | null;
 }
 
 /**
  * Only products from approved stores are public. `images` is the full gallery when `full` is set,
  * otherwise just the cover photo (list responses stay small); `image_count` is always the real total.
  */
+/** A listing is on sale while its original price is above its price and the sale has not ended. */
+export const ON_SALE_SQL = "p.compare_at_price IS NOT NULL AND p.compare_at_price > p.price AND (p.sale_ends_at IS NULL OR p.sale_ends_at > now())";
+
 export function productSelect(full: boolean): string {
   return `
   p.id, p.status, p.condition, p.extra_delivery_fee, p.returns_accepted, p.slug, p.store_id, p.category_id, p.subcategory_id, p.title, p.price, p.quantity, p.brand, p.size, p.color,
-  p.package_include, p.custom_specs, p.description, p.handling_time, p.delivery_time, p.delivery_fee, p.free_delivery,
-  p.payment_methods, p.location, p.icon, p.tags, p.variations, p.created_at,
+  p.package_include, p.custom_specs, p.description, p.handling_days_min, p.handling_days_max, p.delivery_days_min, p.delivery_days_max, p.delivery_fee, p.free_delivery,
+  p.compare_at_price, p.sale_ends_at,
+  (${ON_SALE_SQL}) AS on_sale,
+  p.payment_methods, p.location, p.icon, p.tags, product_variations_json(p.id) AS variations, p.created_at,
   ${full ? "p.images" : "CASE WHEN jsonb_array_length(p.images) > 0 THEN jsonb_build_array(p.images->0) ELSE '[]'::jsonb END AS images"},
   jsonb_array_length(p.images) AS image_count,
-  COALESCE((SELECT round(avg(f.rating), 1) FROM feedback f WHERE f.product_id = p.id), 0) AS rating,
-  (SELECT count(*) FROM feedback f WHERE f.product_id = p.id) AS review_count,
-  COALESCE((SELECT sum(oi.quantity) FROM order_items oi JOIN orders o ON o.id = oi.order_id
-             WHERE oi.product_id = p.id AND o.created_at > now() - interval '30 days'), 0) AS sold_30d,
-  COALESCE((SELECT sum(oi.quantity) FROM order_items oi WHERE oi.product_id = p.id), 0) AS sold_total`;
+  p.rating_avg AS rating, p.review_count, p.sold_count AS sold_total, p.last_sold_at`;
 }
 
 const NEW_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** 2,3 -> "2-3 days"; 3,3 -> "3 days"; 1,1 -> "1 day"; 0 (unknown) -> "". */
+function formatDays(min: number, max: number): string {
+  if (max <= 0) return "";
+  if (min === max) return `${max} ${max === 1 ? "day" : "days"}`;
+  return `${min}-${max} days`;
+}
+
+/** jsonb does not keep object key order, so put each combination's values back in the seller's attribute order. */
+function orderedVariations(v: ProductVariations): ProductVariations {
+  const names = v.attributes.map((a) => a.name);
+  return {
+    ...v,
+    combinations: v.combinations.map((c) => ({
+      ...c,
+      values: Object.fromEntries(names.filter((n) => n in c.values).map((n) => [n, c.values[n]])),
+    })),
+  };
+}
 
 export function toProduct(row: ProductRow): Product {
   const created = new Date(row.created_at);
   // "new" and "trending" are derived from listing age / recent sales; "deal" and "sale" are curated tags.
   const tags = new Set(row.tags.filter((t) => t !== "new" && t !== "trending"));
   if (Date.now() - created.getTime() < NEW_WINDOW_MS) tags.add("new");
-  if (row.sold_30d > 0) tags.add("trending");
+  // "Trending" means it sold within the last 30 days, which the stored last_sold_at answers directly.
+  if (row.last_sold_at && Date.now() - new Date(row.last_sold_at).getTime() < NEW_WINDOW_MS) tags.add("trending");
+  if (row.on_sale) tags.add("sale"); // priced sales count alongside the curated "sale" tag
 
   return {
     id: row.id,
@@ -202,8 +242,8 @@ export function toProduct(row: ProductRow): Product {
     packageInclude: row.package_include ?? undefined,
     customSpecs: row.custom_specs,
     description: row.description,
-    handlingTime: row.handling_time,
-    deliveryTime: row.delivery_time,
+    handlingTime: formatDays(row.handling_days_min, row.handling_days_max),
+    deliveryTime: formatDays(row.delivery_days_min, row.delivery_days_max),
     deliveryFee: row.free_delivery ? 0 : row.delivery_fee,
     extraDeliveryFee: row.free_delivery ? 0 : row.extra_delivery_fee,
     freeDelivery: row.free_delivery,
@@ -220,7 +260,19 @@ export function toProduct(row: ProductRow): Product {
     rating: Number(row.rating),
     reviewCount: row.review_count,
     createdAt: iso(row.created_at),
-    variations: row.variations ?? undefined,
+    ...(row.on_sale
+      ? { compareAtPrice: Number(row.compare_at_price), ...(row.sale_ends_at ? { saleEndsAt: iso(row.sale_ends_at) } : {}) }
+      : {}),
+    ...(row.last_sold_at ? { lastSoldAt: iso(row.last_sold_at) } : {}),
+    variations: row.variations
+      ? {
+          ...orderedVariations(row.variations),
+          // Older rows stored one URL per option.
+          images: Object.fromEntries(
+            Object.entries(row.variations.images ?? {}).map(([option, v]) => [option, Array.isArray(v) ? v : [v as string]]),
+          ),
+        }
+      : undefined,
   };
 }
 
@@ -323,7 +375,10 @@ export interface TransactionRow {
   product_title: string;
   payment_method: PaymentMethod;
   amount: number;
+  fee_rate: number;
+  fee_amount: number;
   confirmed: boolean;
+  payout_id: string | null;
   created_at: Date;
 }
 
@@ -333,7 +388,10 @@ export const toTransaction = (row: TransactionRow): SellerTransaction => ({
   productTitle: row.product_title,
   paymentMethod: row.payment_method,
   amount: row.amount,
+  feeRate: Number(row.fee_rate),
+  feeAmount: row.fee_amount,
   confirmed: row.confirmed,
+  ...(row.payout_id ? { payoutId: row.payout_id } : {}),
   createdAt: iso(row.created_at),
 });
 

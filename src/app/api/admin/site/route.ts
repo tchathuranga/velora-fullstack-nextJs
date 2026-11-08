@@ -1,10 +1,11 @@
+import { audit } from "@/server/audit";
 import { requireAdmin } from "@/server/auth";
 import { withTransaction } from "@/server/db";
 import { ok, parseBody, route } from "@/server/http";
 import { siteSchema } from "@/server/validation";
 
 export const PUT = route(async (req) => {
-  await requireAdmin(req);
+  const session = await requireAdmin(req);
   const config = await parseBody(req, siteSchema);
 
   await withTransaction(async (client) => {
@@ -14,6 +15,7 @@ export const PUT = route(async (req) => {
         [key, JSON.stringify(value)],
       );
     }
+    await audit(session, "site.settings_changed", "site_settings", null, { keys: Object.keys(config) }, client);
   });
   return ok(config);
 });

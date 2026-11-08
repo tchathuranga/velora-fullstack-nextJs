@@ -5,7 +5,8 @@ import { badRequest, conflict, forbidden, ok, parseBody, route } from "@/server/
 import { notify } from "@/server/notifications";
 import { loadOrders } from "@/server/orders";
 import { placeOrderSchema } from "@/server/validation";
-import { addDays, parseDayRange, shippingCost, todayInColombo } from "@/lib/shipping";
+import { addDays, shippingCost, todayInColombo } from "@/lib/shipping";
+import { TRANSACTION_FEE_RATE, variationLabel } from "@/lib/utils";
 import type { PaymentMethod, ProductVariations } from "@/types";
 
 interface LockedProduct {
@@ -19,7 +20,7 @@ interface LockedProduct {
   free_delivery: boolean;
   payment_methods: PaymentMethod[];
   icon: string;
-  handling_time: string;
+  handling_days_max: number;
   variations: ProductVariations | null;
 }
 
@@ -53,7 +54,7 @@ export const POST = route(async (req: NextRequest) => {
   const orderId = await withTransaction(async (client) => {
     const { rows: products } = await client.query<LockedProduct>(
       `SELECT p.id, p.store_id, p.title, p.price, p.quantity, p.delivery_fee, p.extra_delivery_fee, p.free_delivery,
-              p.payment_methods, p.icon, p.handling_time, p.variations
+              p.payment_methods, p.icon, p.handling_days_max, product_variations_json(p.id) AS variations
          FROM products p JOIN stores s ON s.id = p.store_id AND s.status = 'active'
         WHERE p.id = ANY($1::uuid[]) AND p.status = 'active'
         ORDER BY p.id
@@ -98,7 +99,7 @@ export const POST = route(async (req: NextRequest) => {
         variationId = combo.id;
       }
 
-      const label = variation ? `"${product.title}" (${Object.values(variation).join(", ")})` : `"${product.title}"`;
+      const label = variation ? `"${product.title}" (${variationLabel(variation)})` : `"${product.title}"`;
       if (stock < w.quantity) throw conflict(stock === 0 ? `${label} is out of stock.` : `Only ${stock} of ${label} left in stock.`);
       lines.push({ product, variationId, variation, price, quantity: w.quantity, shipping: 0 });
     }
@@ -116,20 +117,15 @@ export const POST = route(async (req: NextRequest) => {
     const subtotal = lines.reduce((sum, l) => sum + l.price * l.quantity, 0);
     const deliveryCost = lines.reduce((sum, l) => sum + l.shipping, 0);
     const today = todayInColombo();
-    const trackingSteps = [
-      { label: "Order placed", done: true, date: today },
-      { label: "Handed to courier", done: false },
-      { label: "Out for delivery", done: false },
-      { label: "Delivered", done: false },
-    ];
-    const billing = { ...input.billing, email: input.billing.email || undefined };
+    const address = input.billing;
 
     const { rows: seq } = await client.query<{ n: string }>("SELECT nextval('order_number_seq') AS n");
     const id = `ORD-${seq[0].n}`;
     await client.query(
-      `INSERT INTO orders (id, buyer_id, buyer_name, subtotal, delivery_cost, total, payment_method, billing,
-                           order_note, save_address, tracking_steps)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      `INSERT INTO orders (id, buyer_id, buyer_name, subtotal, delivery_cost, total, payment_method,
+                           billing_full_name, billing_street, billing_city, billing_province, billing_phone1, billing_phone2,
+                           billing_zip_code, billing_email, order_note, save_address)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
       [
         id,
         session.userId,
@@ -138,17 +134,23 @@ export const POST = route(async (req: NextRequest) => {
         deliveryCost,
         subtotal + deliveryCost,
         input.paymentMethod,
-        JSON.stringify(billing),
+        address.fullName,
+        address.street,
+        address.city,
+        address.province,
+        address.phone1,
+        address.phone2,
+        address.zipCode,
+        address.email || null,
         input.orderNote ?? "",
         input.saveAddress,
-        JSON.stringify(trackingSteps),
       ],
     );
+    await client.query("INSERT INTO order_events (order_id, type, occurred_on) VALUES ($1, 'placed', $2)", [id, today]);
 
     for (const [index, line] of lines.entries()) {
       const { product } = line;
-      const handling = parseDayRange(product.handling_time);
-      const shipBy = handling ? addDays(today, handling.max) : null;
+      const shipBy = product.handling_days_max > 0 ? addDays(today, product.handling_days_max) : null;
       const { rows } = await client.query<{ id: string }>(
         `INSERT INTO order_items (order_id, product_id, store_id, title, price, quantity, icon, variation, variation_id,
                                   shipping_cost, ship_by)
@@ -167,21 +169,23 @@ export const POST = route(async (req: NextRequest) => {
           shipBy,
         ],
       );
+      // The commission is recorded as charged, so a later change of the rate never rewrites past sales.
+      const amount = line.price * line.quantity + line.shipping;
       await client.query(
-        `INSERT INTO seller_transactions (id, order_item_id, store_id, product_title, payment_method, amount)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [`TXN-${id.slice(4)}-${index + 1}`, rows[0].id, product.store_id, product.title, input.paymentMethod, line.price * line.quantity + line.shipping],
+        `INSERT INTO seller_transactions (id, order_item_id, store_id, product_title, payment_method, amount, fee_rate, fee_amount)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [`TXN-${id.slice(4)}-${index + 1}`, rows[0].id, product.store_id, product.title, input.paymentMethod, amount, TRANSACTION_FEE_RATE, Math.round(amount * TRANSACTION_FEE_RATE * 100) / 100],
       );
     }
 
-    // Decrement stock. Variation listings keep their per-variation counts in JSON; the listing total follows.
+    // Decrement stock. Variation listings count stock per variant (the database keeps the listing total in step, and
+    // refuses to go below zero); other listings have a single count.
     for (const product of products) {
       const own = lines.filter((l) => l.product.id === product.id);
       if (product.variations?.combinations.length) {
-        const variations = structuredClone(product.variations);
-        for (const l of own) variations.combinations.find((c) => c.id === l.variationId)!.quantity -= l.quantity;
-        const total = variations.combinations.reduce((sum, c) => sum + c.quantity, 0);
-        await client.query("UPDATE products SET variations = $2, quantity = $3 WHERE id = $1", [product.id, JSON.stringify(variations), total]);
+        for (const l of own) {
+          await client.query("UPDATE product_variants SET quantity = quantity - $3 WHERE product_id = $1 AND id = $2", [product.id, l.variationId, l.quantity]);
+        }
       } else {
         const units = own.reduce((sum, l) => sum + l.quantity, 0);
         await client.query("UPDATE products SET quantity = quantity - $2 WHERE id = $1", [product.id, units]);
@@ -193,7 +197,7 @@ export const POST = route(async (req: NextRequest) => {
       await client.query(
         `INSERT INTO user_addresses (user_id, full_name, street, city, province, phone1, phone2, zip_code, email)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         ON CONFLICT (user_id) DO UPDATE SET full_name = $2, street = $3, city = $4, province = $5,
+         ON CONFLICT (user_id) WHERE is_default DO UPDATE SET full_name = $2, street = $3, city = $4, province = $5,
            phone1 = $6, phone2 = $7, zip_code = $8, email = $9, updated_at = now()`,
         [session.userId, a.fullName, a.street, a.city, a.province, a.phone1, a.phone2, a.zipCode, a.email || null],
       );
