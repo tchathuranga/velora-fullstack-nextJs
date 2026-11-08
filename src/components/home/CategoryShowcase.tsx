@@ -65,8 +65,8 @@ export function CategoryShowcase() {
   return (
     <section className="py-6">
       <h2 className="mb-3 text-lg font-semibold text-slate-900">Shop by category</h2>
-      {/* Phones: a swipeable row showing four tiles at a time. Larger screens: a wrapping grid. */}
-      <div className="scrollbar-thin -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-6">
+      {/* Phones: two wide tiles per row, wrapping. Larger screens: a wider grid. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {categories.map((category) => {
           const Icon = iconFor(category.name);
           const [from, to] = GRADIENTS[hashSeed(category.id) % GRADIENTS.length];
@@ -75,10 +75,10 @@ export function CategoryShowcase() {
               key={category.id}
               href={`/category/${category.slug}`}
               style={{ backgroundColor: from, backgroundImage: `linear-gradient(135deg, ${from}, ${to})` }}
-              className="flex aspect-square w-[calc((100%-1.5rem)/4)] shrink-0 snap-start flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl p-2 text-center text-white shadow-sm transition hover:shadow-md sm:aspect-auto sm:min-h-28 sm:w-auto sm:gap-2 sm:p-4"
+              className="flex min-h-24 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl p-4 text-center text-white shadow-sm transition hover:shadow-md sm:min-h-28"
             >
               <Icon size={22} className="shrink-0 opacity-90" />
-              <p className="line-clamp-2 text-[11px] font-semibold leading-tight sm:text-sm">{category.name}</p>
+              <p className="line-clamp-2 text-sm font-semibold leading-tight">{category.name}</p>
             </Link>
           );
         })}
