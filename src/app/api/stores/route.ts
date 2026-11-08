@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requireBuyer } from "@/server/auth";
+import { encryptBankDetails } from "@/server/crypto";
 import { query, queryOne } from "@/server/db";
 import { conflict, isUniqueViolation, ok, parseBody, route } from "@/server/http";
 import { STORE_SELECT, StoreRow, toStore } from "@/server/serializers";
@@ -36,7 +37,7 @@ export const POST = route(async (req) => {
   try {
     const row = await queryOne<{ id: string }>(
       `INSERT INTO stores (slug, owner_id, store_name, business_name, full_name, address, telephone, email,
-                           about_store, bank_details, bank_details_optional, cover_color, profile_color,
+                           about_store, bank_details_enc, bank_details_optional_enc, cover_color, profile_color,
                            profile_image_url, cover_image_url)
        VALUES ($1, $2, $3, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
       [
@@ -48,8 +49,8 @@ export const POST = route(async (req) => {
         input.telephone,
         input.email,
         input.aboutStore,
-        input.bankDetails,
-        input.bankDetailsOptional ?? null,
+        encryptBankDetails(input.bankDetails),
+        input.bankDetailsOptional ? encryptBankDetails(input.bankDetailsOptional) : null,
         palette.coverColor,
         palette.profileColor,
         input.profileImage ?? null,

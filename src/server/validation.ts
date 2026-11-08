@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseDayRange } from "@/lib/shipping";
 import { isOwnCloudinaryUrl } from "./cloudinary";
 
 const text = (max = 200) => z.string().trim().max(max);
@@ -87,9 +88,9 @@ export const storeImagesSchema = z.object({
   coverImage: imageUrl.nullable().optional(),
 });
 
-/** Handling / delivery time is free text, but it must state the number of days so deadlines and estimates can be computed. */
+/** Handling / delivery time is typed as text, but it must state the number of days: it is stored as whole numbers and drives deadlines and estimates. */
 const dayRange = (label: string) =>
-  required(label, 100).refine((value) => /d/.test(value), `${label} must include the number of days, e.g. "2-3 days".`);
+  required(label, 100).refine((value) => parseDayRange(value) !== null, `${label} must include the number of days, e.g. "2-3 days".`);
 
 export const createProductSchema = z.object({
   title: required("Product title", 100),
@@ -113,10 +114,15 @@ export const createProductSchema = z.object({
   paymentMethods: z.array(paymentMethodSchema).min(1, "Select at least one payment method."),
   location: required("Store location", 200),
   images: z.array(imageUrl).max(13).default([]),
+  /** The original price, shown crossed out while the listing is on sale. */
+  compareAtPrice: z.number().positive().max(100_000_000).nullish(),
+  /** When the sale ends (ISO 8601). Leave empty for a sale with no end date. */
+  saleEndsAt: z.string().datetime({ offset: true }).nullish(),
   variations: z
     .object({
       attributes: z.array(z.object({ name: text(60), options: z.array(text(60)).max(50) })).max(5),
-      images: z.record(z.string(), imageUrl),
+      // Older listings stored a single URL per option; accept both and always keep a list.
+      images: z.record(z.string(), z.union([imageUrl, z.array(imageUrl).max(8)]).transform((v) => (Array.isArray(v) ? v : [v]))),
       combinations: z
         .array(
           z.object({
@@ -129,6 +135,16 @@ export const createProductSchema = z.object({
         .max(500),
     })
     .nullish(),
+}).superRefine((value, ctx) => {
+  if (value.compareAtPrice == null) return;
+  if (value.variations && value.variations.combinations.length > 0) {
+    ctx.addIssue({ code: "custom", path: ["compareAtPrice"], message: "Sale pricing isn't available for listings with variations yet." });
+  } else if (value.compareAtPrice <= value.price) {
+    ctx.addIssue({ code: "custom", path: ["compareAtPrice"], message: "The original price must be higher than the selling price." });
+  }
+  if (value.saleEndsAt && new Date(value.saleEndsAt).getTime() <= Date.now()) {
+    ctx.addIssue({ code: "custom", path: ["saleEndsAt"], message: "The sale end date must be in the future." });
+  }
 });
 
 export const productStatusSchema = z.object({ status: z.enum(["active", "ended"]) });

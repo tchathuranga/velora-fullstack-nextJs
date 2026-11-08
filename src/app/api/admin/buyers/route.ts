@@ -11,7 +11,7 @@ export const GET = route(async (req) => {
             CASE WHEN a.user_id IS NULL THEN NULL ELSE jsonb_build_object(
               'fullName', a.full_name, 'street', a.street, 'city', a.city, 'province', a.province,
               'phone1', a.phone1, 'phone2', a.phone2, 'zipCode', a.zip_code, 'email', a.email) END AS address
-       FROM users u LEFT JOIN user_addresses a ON a.user_id = u.id
+       FROM users u LEFT JOIN user_addresses a ON a.user_id = u.id AND a.is_default
       WHERE u.role = 'buyer' ORDER BY u.created_at DESC`,
   );
   return ok(rows.map(toBuyer));

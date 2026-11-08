@@ -8,7 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { FeedbackForm } from "@/components/feedback/FeedbackForm";
 import { useSubmitFeedbackMutation } from "@/Redux/api";
 import { ContactSellerButton } from "@/components/store/ContactSellerButton";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, variationLabel } from "@/lib/utils";
 
 export function PurchaseHistoryItem({
   order,
@@ -41,7 +41,7 @@ export function PurchaseHistoryItem({
             Order {order.id} · {formatDate(order.createdAt)}
           </span>
         </div>
-        {item.variation && <p className="text-sm text-slate-600">{Object.values(item.variation).join(" / ")}</p>}
+        {item.variation && <p className="text-sm text-slate-600">{variationLabel(item.variation)}</p>}
         <p className="text-sm text-[var(--color-muted)]">
           Qty {item.quantity} · {formatCurrency(item.price)} each
           {item.shippingCost > 0 && <> · Shipping {formatCurrency(item.shippingCost)}</>}

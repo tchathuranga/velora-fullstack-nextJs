@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { SESSION_COOKIE, hashPassword, signSession } from "@/server/auth";
 import { query, queryOne } from "@/server/db";
+import { parseDayRange } from "@/lib/shipping";
 
 export interface Call {
   method?: string;
@@ -74,9 +75,10 @@ export async function createProduct(
   } = {},
 ) {
   const n = uniq();
+  const handling = parseDayRange(o.handlingTime ?? "2-3 days") ?? { min: 0, max: 0 };
   const product = await queryOne<{ id: string; slug: string }>(
     `INSERT INTO products (slug, store_id, title, price, quantity, delivery_fee, extra_delivery_fee, free_delivery, payment_methods,
-                           handling_time, status, variations)
+                           handling_days_min, handling_days_max, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, slug`,
     [
       `prod-${n}`,
@@ -88,11 +90,13 @@ export async function createProduct(
       o.extraDeliveryFee ?? 0,
       o.freeDelivery ?? false,
       o.paymentMethods ?? ["cod", "bank_transfer"],
-      o.handlingTime ?? "2-3 days",
+      handling.min,
+      handling.max,
       o.status ?? "active",
-      o.variations ? JSON.stringify(o.variations) : null,
     ],
   );
+  // Variations live in their own tables; the same SQL function the API uses loads them (and a trigger sets stock/price).
+  if (o.variations) await queryOne("SELECT replace_product_variations($1, $2::jsonb)", [product!.id, JSON.stringify(o.variations)]);
   return product!;
 }
 

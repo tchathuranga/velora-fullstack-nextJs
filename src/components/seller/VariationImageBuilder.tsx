@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import clsx from "clsx";
 import { VariationAttribute, VariationCombination } from "@/types";
 import { ImageDropzone } from "@/components/ui/ImageDropzone";
 import { Select } from "@/components/ui/Select";
@@ -9,6 +8,8 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { generateId } from "@/lib/utils";
 import { uploadImage } from "@/lib/upload";
+
+const MAX_IMAGES_PER_OPTION = 5;
 
 function cartesian(attributes: VariationAttribute[]): Record<string, string>[] {
   return attributes.reduce<Record<string, string>[]>(
@@ -34,14 +35,14 @@ export function VariationImageBuilder({
   attributes: VariationAttribute[];
   basePrice: number;
   /** Previously saved photos (option → hosted URL) and price/quantity rows, so going back and forth never loses them. */
-  initialImages: Record<string, string>;
+  initialImages: Record<string, string[]>;
   initialCombinations: VariationCombination[];
   /** Going back keeps what has been entered so far. */
-  onBack: (images: Record<string, string>, combinations: VariationCombination[]) => void;
-  onSave: (images: Record<string, string>, combinations: VariationCombination[]) => void;
+  onBack: (images: Record<string, string[]>, combinations: VariationCombination[]) => void;
+  onSave: (images: Record<string, string[]>, combinations: VariationCombination[]) => void;
 }) {
   const [selectedAttrIndex, setSelectedAttrIndex] = useState(0);
-  const [images, setImages] = useState<Record<string, string>>(initialImages);
+  const [images, setImages] = useState<Record<string, string[]>>(initialImages);
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
 
@@ -63,25 +64,28 @@ export function VariationImageBuilder({
     setCombinations((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
   };
 
-  const setOptionImage = async (option: string, file: File | null) => {
+  const addOptionImages = async (option: string, files: File[]) => {
     setError("");
-    if (!file) {
-      setImages((prev) => {
-        const next = { ...prev };
-        delete next[option];
-        return next;
-      });
-      return;
-    }
+    const room = MAX_IMAGES_PER_OPTION - (images[option]?.length ?? 0);
+    if (room <= 0) return;
     setUploading((prev) => ({ ...prev, [option]: true }));
     try {
-      const url = await uploadImage(file, "product");
-      setImages((prev) => ({ ...prev, [option]: url }));
+      const urls: string[] = [];
+      for (const file of files.slice(0, room)) urls.push(await uploadImage(file, "product"));
+      setImages((prev) => ({ ...prev, [option]: [...(prev[option] ?? []), ...urls] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "The image couldn't be uploaded. Please try again.");
     } finally {
       setUploading((prev) => ({ ...prev, [option]: false }));
     }
+  };
+
+  const removeOptionImage = (option: string, index: number) => {
+    setImages((prev) => {
+      const next = { ...prev, [option]: (prev[option] ?? []).filter((_, i) => i !== index) };
+      if (next[option].length === 0) delete next[option];
+      return next;
+    });
   };
 
   const activeAttribute = attributes[selectedAttrIndex];
@@ -108,19 +112,32 @@ export function VariationImageBuilder({
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
-        {activeAttribute?.options.map((option) => (
-          <div key={option}>
-            <p className="mb-1.5 text-sm font-medium text-slate-700">{option}</p>
-            <ImageDropzone
-              label="Add a image"
-              preview={images[option] ?? null}
-              busy={uploading[option]}
-              onFileSelect={(file) => void setOptionImage(option, file)}
-              className={clsx(images[option] && "border-solid border-[var(--color-primary)]")}
-            />
-          </div>
-        ))}
+      <div className="mt-4 space-y-5">
+        {activeAttribute?.options.map((option) => {
+          const urls = images[option] ?? [];
+          return (
+            <div key={option}>
+              <p className="mb-1.5 text-sm font-medium text-slate-700">
+                {option} <span className="font-normal text-[var(--color-muted)]">({urls.length}/{MAX_IMAGES_PER_OPTION})</span>
+              </p>
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-6">
+                {urls.map((url, i) => (
+                  <ImageDropzone key={url} preview={url} onFileSelect={() => removeOptionImage(option, i)} className="border-solid border-[var(--color-primary)]" />
+                ))}
+                {urls.length < MAX_IMAGES_PER_OPTION && (
+                  <ImageDropzone
+                    label="Add images"
+                    preview={null}
+                    multiple
+                    busy={uploading[option]}
+                    onFileSelect={(file) => file && void addOptionImages(option, [file])}
+                    onFilesSelect={(files) => void addOptionImages(option, files)}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
       {error && <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p>}
 

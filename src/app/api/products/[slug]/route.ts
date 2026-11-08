@@ -1,7 +1,7 @@
 import { getSession, requireSeller } from "@/server/auth";
-import { queryOne } from "@/server/db";
+import { queryOne, withTransaction } from "@/server/db";
 import { forbidden, notFound, ok, parseBody, route } from "@/server/http";
-import { PRODUCT_COLUMNS, assertSubcategoryMatches, productValues } from "@/server/products";
+import { PRODUCT_COLUMNS, assertSubcategoryMatches, productValues, saveVariations } from "@/server/products";
 import { ProductRow, productSelect, toProduct } from "@/server/serializers";
 import { createProductSchema } from "@/server/validation";
 
@@ -39,7 +39,10 @@ export const PATCH = route(async (req, ctx: RouteContext<"/api/products/[slug]">
   if (existing.store_id !== session.storeId) throw forbidden("You can only edit your own listings.");
 
   const sets = PRODUCT_COLUMNS.map((column, i) => `${column} = $${i + 2}`).join(", ");
-  await queryOne(`UPDATE products SET ${sets} WHERE id = $1`, [existing.id, ...productValues(input)]);
+  await withTransaction(async (client) => {
+    await client.query(`UPDATE products SET ${sets} WHERE id = $1`, [existing.id, ...productValues(input)]);
+    await saveVariations(client, existing.id, input.variations);
+  });
 
   const row = await queryOne<ProductRow>(`SELECT ${productSelect(true)} FROM products p WHERE p.id = $1`, [existing.id]);
   return ok(toProduct(row!));

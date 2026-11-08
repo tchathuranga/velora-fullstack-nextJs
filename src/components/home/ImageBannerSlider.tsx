@@ -38,15 +38,21 @@ export function ImageBannerSlider() {
         style={{ transform: `translateX(-${safeIndex * 100}%)` }}
       >
         {banners.map((banner) => (
-          <div key={banner.id} className="relative h-56 w-full shrink-0 overflow-hidden sm:h-72 md:h-80">
+          // Phones show a banner photo at its natural ratio so nothing is cropped; from `sm` up it fills a wide 19:5 strip.
+          <div
+            key={banner.id}
+            className={`relative w-full shrink-0 overflow-hidden sm:aspect-[19/5] ${banner.imageUrl ? "" : "aspect-[19/5]"}`}
+          >
             <PlaceholderImage
               seed={banner.id}
               image={banner.imageUrl}
               label={banner.title}
-              className="absolute inset-0 h-full w-full"
+              className={
+                banner.imageUrl ? "block h-auto w-full sm:absolute sm:inset-0 sm:h-full" : "absolute inset-0 h-full w-full"
+              }
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 px-8 pb-8 text-white">
+            <div className="absolute inset-x-0 bottom-0 hidden px-8 pb-8 text-white sm:block">
               {banner.title && <h2 className="text-2xl font-bold sm:text-3xl">{banner.title}</h2>}
               {banner.subtitle && <p className="mt-1 text-sm text-white/85 sm:text-base">{banner.subtitle}</p>}
             </div>
@@ -60,7 +66,7 @@ export function ImageBannerSlider() {
             type="button"
             aria-label="Previous slide"
             onClick={() => goTo(safeIndex - 1)}
-            className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow transition hover:bg-white"
+            className="absolute left-2 top-1/2 flex h-7 w-7 sm:left-3 sm:h-9 sm:w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow transition hover:bg-white"
           >
             <ChevronLeft size={18} />
           </button>
@@ -68,7 +74,7 @@ export function ImageBannerSlider() {
             type="button"
             aria-label="Next slide"
             onClick={() => goTo(safeIndex + 1)}
-            className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow transition hover:bg-white"
+            className="absolute right-2 top-1/2 flex h-7 w-7 sm:right-3 sm:h-9 sm:w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow transition hover:bg-white"
           >
             <ChevronRight size={18} />
           </button>

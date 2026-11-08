@@ -87,7 +87,7 @@ export async function loadSession(userId: string): Promise<Session | null> {
               'phone1', a.phone1, 'phone2', a.phone2, 'zipCode', a.zip_code, 'email', a.email) END AS address
        FROM users u
        LEFT JOIN stores s ON s.owner_id = u.id
-       LEFT JOIN user_addresses a ON a.user_id = u.id
+       LEFT JOIN user_addresses a ON a.user_id = u.id AND a.is_default
       WHERE u.id = $1`,
     [userId],
   );

@@ -5,9 +5,6 @@ import { CreateProductInput, useCreateProductMutation, useGetProductsQuery } fro
 import type { Product } from "@/types";
 
 interface ProductsContextValue {
-  /** The public catalog (approved stores only), newest first. Photos are trimmed to the cover image. */
-  products: Product[];
-  loading: boolean;
   /** Approved sellers only; rejects with the API error. */
   addProduct: (input: CreateProductInput) => Promise<Product>;
 }
@@ -16,23 +13,18 @@ const ProductsContext = createContext<ProductsContextValue | undefined>(undefine
 const EMPTY: Product[] = [];
 
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
-  const { data, isLoading } = useGetProductsQuery();
   const [createProduct] = useCreateProductMutation();
-
-  const value = useMemo<ProductsContextValue>(
-    () => ({
-      products: data ?? EMPTY,
-      loading: isLoading,
-      addProduct: (input) => createProduct(input).unwrap(),
-    }),
-    [data, isLoading, createProduct],
-  );
-
+  const value = useMemo<ProductsContextValue>(() => ({ addProduct: (input) => createProduct(input).unwrap() }), [createProduct]);
   return <ProductsContext.Provider value={value}>{children}</ProductsContext.Provider>;
 }
 
+/**
+ * The whole public catalog (approved stores, newest first) plus `addProduct`. The catalog is fetched by the pages that call this
+ * hook (RTK Query shares one cached copy), not on every page: the home page loads only the few products its sections show.
+ */
 export function useProducts() {
   const ctx = useContext(ProductsContext);
   if (!ctx) throw new Error("useProducts must be used within ProductsProvider");
-  return ctx;
+  const { data, isLoading } = useGetProductsQuery();
+  return useMemo(() => ({ products: data ?? EMPTY, loading: isLoading, addProduct: ctx.addProduct }), [data, isLoading, ctx.addProduct]);
 }

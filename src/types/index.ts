@@ -92,7 +92,8 @@ export interface VariationCombination {
 
 export interface ProductVariations {
   attributes: VariationAttribute[];
-  images: Record<string, string>;
+  /** Photos per option value (e.g. "Blue" → several URLs), shown in the gallery when a matching variation is chosen. */
+  images: Record<string, string[]>;
   combinations: VariationCombination[];
 }
 
@@ -125,6 +126,12 @@ export interface Product {
   returnsAccepted: boolean;
   /** Total units sold across all orders. */
   soldCount: number;
+  /** The original price while the listing is on sale (it is then shown crossed out next to `price`). */
+  compareAtPrice?: number;
+  /** When the sale ends (ISO); absent for a sale with no end date. */
+  saleEndsAt?: string;
+  /** When this listing last sold (ISO); absent if it has never sold. Drives "Today's deal". */
+  lastSoldAt?: string;
   paymentMethods: PaymentMethod[];
   location: string;
   categoryId?: string;
@@ -214,7 +221,12 @@ export interface SellerTransaction {
   productTitle: string;
   paymentMethod: PaymentMethod;
   amount: number;
+  /** Commission rate and amount charged when the sale was made (they do not change if the rate later does). */
+  feeRate: number;
+  feeAmount: number;
   confirmed: boolean;
+  /** Set once an admin payout has settled this payment. */
+  payoutId?: string;
   createdAt: string;
 }
 

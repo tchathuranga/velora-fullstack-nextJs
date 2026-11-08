@@ -18,3 +18,11 @@ export function getRelatedProducts(products: Product[], product: Product, limit 
     .concat(products.filter((p) => p.id !== product.id && p.storeId !== product.storeId))
     .slice(0, limit);
 }
+
+/** Listings ordered by most recent sale, newest first; products that have never sold are left out. */
+export function getRecentlySoldProducts(products: Product[], limit = 12): Product[] {
+  return products
+    .filter((p) => p.lastSoldAt)
+    .sort((a, b) => new Date(b.lastSoldAt!).getTime() - new Date(a.lastSoldAt!).getTime())
+    .slice(0, limit);
+}

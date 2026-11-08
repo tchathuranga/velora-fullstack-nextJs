@@ -1,13 +1,16 @@
 "use client";
 
-import { Product } from "@/types";
+import { useGetProductsPageQuery } from "@/Redux/api";
 import { useRecentlyViewed } from "@/context/RecentlyViewedContext";
 import { ProductSection } from "./ProductSection";
 
-export function RecentlyViewedSection({ products }: { products: Product[] }) {
+/** The products this browser has looked at recently, fetched by id (not by loading the whole catalog). */
+export function RecentlyViewedSection() {
   const { productIds } = useRecentlyViewed();
-  const items = productIds
-    .map((id) => products.find((p) => p.id === id))
+  const ids = productIds.slice(0, 12);
+  const { data } = useGetProductsPageQuery({ ids, limit: 12 }, { skip: ids.length === 0 });
+  const items = ids
+    .map((id) => data?.items.find((p) => p.id === id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   if (items.length === 0) return null;

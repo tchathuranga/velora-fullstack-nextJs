@@ -1,3 +1,4 @@
+import { audit } from "@/server/audit";
 import { requireAdmin } from "@/server/auth";
 import { queryOne } from "@/server/db";
 import { conflict, isUniqueViolation, isUuid, notFound, ok, parseBody, route } from "@/server/http";
@@ -25,10 +26,11 @@ export const PATCH = route(async (req, ctx: RouteContext<"/api/admin/categories/
 
 /** Products in the category keep existing (their category link is cleared). */
 export const DELETE = route(async (req, ctx: RouteContext<"/api/admin/categories/[id]">) => {
-  await requireAdmin(req);
+  const session = await requireAdmin(req);
   const { id } = await ctx.params;
   if (!isUuid(id)) throw notFound("Category not found.");
-  const row = await queryOne("DELETE FROM categories WHERE id = $1 RETURNING id", [id]);
+  const row = await queryOne<{ name: string }>("DELETE FROM categories WHERE id = $1 RETURNING name", [id]);
   if (!row) throw notFound("Category not found.");
+  await audit(session, "category.deleted", "category", id, { name: row.name });
   return ok({ ok: true });
 });

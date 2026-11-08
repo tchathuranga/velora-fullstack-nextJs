@@ -68,6 +68,23 @@ export interface CreateStoreInput {
   coverImage?: string;
 }
 
+export interface ProductsPage {
+  items: Product[];
+  /** How many products match in all (not just on this page). */
+  total: number;
+}
+
+export interface ProductsPageArgs {
+  section?: "new" | "deal" | "sale";
+  ids?: string[];
+  categoryId?: string;
+  storeId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const ON_SALE_PAGE_SIZE = 12;
+
 export interface CreateProductInput {
   title: string;
   categoryId: string | null;
@@ -90,6 +107,10 @@ export interface CreateProductInput {
   paymentMethods: PaymentMethod[];
   location: string;
   images: string[];
+  /** Original price while on sale (must be above `price`); omit or null for a normal listing. */
+  compareAtPrice?: number | null;
+  /** ISO 8601 end of the sale; omit or null for no end date. */
+  saleEndsAt?: string | null;
   variations: ProductVariations | null;
 }
 
@@ -261,6 +282,28 @@ export const api = createApi({
 
     // ───────────── Products & feedback ─────────────
     getProducts: build.query<Product[], void>({ query: () => "/products", providesTags: ["Products"] }),
+    /** One page of the catalog (a home-page section, a few products by id, or a category / store). */
+    getProductsPage: build.query<ProductsPage, ProductsPageArgs>({
+      query: (args) => {
+        const params = new URLSearchParams({ limit: String(args.limit ?? 12), offset: String(args.offset ?? 0) });
+        if (args.section) params.set("section", args.section);
+        if (args.ids) params.set("ids", args.ids.join(","));
+        if (args.categoryId) params.set("categoryId", args.categoryId);
+        if (args.storeId) params.set("storeId", args.storeId);
+        return `/products?${params}`;
+      },
+      providesTags: ["Products"],
+    }),
+    /** Every product on sale, fetched a page at a time as the shopper scrolls. */
+    getOnSaleProducts: build.infiniteQuery<ProductsPage, void, number>({
+      infiniteQueryOptions: {
+        initialPageParam: 0,
+        getNextPageParam: (lastPage, _pages, lastPageParam) =>
+          lastPage.items.length > 0 && lastPageParam + lastPage.items.length < lastPage.total ? lastPageParam + lastPage.items.length : undefined,
+      },
+      query: ({ pageParam }) => `/products?section=sale&limit=${ON_SALE_PAGE_SIZE}&offset=${pageParam}`,
+      providesTags: ["Products"],
+    }),
     getProduct: build.query<Product, string>({
       query: (slug) => `/products/${encodeURIComponent(slug)}`,
       providesTags: (_res, _err, slug) => [{ type: "Product", id: slug }],
@@ -418,6 +461,8 @@ export const {
   useDeleteBannerMutation,
   useMoveBannerMutation,
   useGetProductsQuery,
+  useGetProductsPageQuery,
+  useGetOnSaleProductsInfiniteQuery,
   useGetProductQuery,
   useCreateProductMutation,
   useUpdateProductMutation,

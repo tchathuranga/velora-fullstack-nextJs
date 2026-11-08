@@ -9,7 +9,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { PlaceholderImage } from "@/components/ui/PlaceholderImage";
 import { ShipmentEditor } from "@/components/seller/ShipmentEditor";
 import { ShipByIndicator } from "@/components/seller/ShipByIndicator";
-import { formatCurrency, formatDate, statusLabel } from "@/lib/utils";
+import { formatCurrency, formatDate, statusLabel, variationLabel } from "@/lib/utils";
 
 export default function SellerOrdersPage() {
   const { role, hydrated } = useAuth();
@@ -62,7 +62,7 @@ export default function SellerOrdersPage() {
                           ) : (
                             <p className="text-slate-800">{item.title}</p>
                           )}
-                          {item.variation && <p className="text-xs text-[var(--color-muted)]">{Object.values(item.variation).join(" / ")}</p>}
+                          {item.variation && <p className="text-xs text-[var(--color-muted)]">{variationLabel(item.variation)}</p>}
                           <p className="text-xs text-[var(--color-muted)]">Qty {item.quantity}</p>
                           <div className="mt-1">
                             <ShipByIndicator item={item} />

@@ -51,7 +51,17 @@ export function ProductCard({ product }: { product: Product }) {
           <StarRating value={product.rating} readOnly size={13} />
           <span className="text-xs text-[var(--color-muted)]">({product.reviewCount})</span>
         </div>
-        <p className="mt-auto text-base font-semibold text-slate-900">{formatCurrency(product.price)}</p>
+        <p className="mt-auto flex flex-wrap items-baseline gap-x-2 text-base font-semibold text-slate-900">
+          {formatCurrency(product.price)}
+          {product.compareAtPrice && (
+            <>
+              <span className="text-xs font-normal text-[var(--color-muted)] line-through">{formatCurrency(product.compareAtPrice)}</span>
+              <span className="rounded bg-[var(--color-danger-light)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--color-danger)]">
+                -{Math.round((1 - product.price / product.compareAtPrice) * 100)}%
+              </span>
+            </>
+          )}
+        </p>
       </div>
     </Link>
   );

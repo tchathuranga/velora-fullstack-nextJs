@@ -46,11 +46,9 @@ export default function ProductPreviewPage() {
   const combinations = product.variations?.combinations ?? [];
   const combination: VariationCombination | null =
     combinations.find((c) => c.id === pickedVariation) ?? combinations.find((c) => c.quantity > 0) ?? combinations[0] ?? null;
-  const variationImage = combination
-    ? Object.values(combination.values)
-        .map((option) => product.variations?.images[option])
-        .find(Boolean)
-    : undefined;
+  const variationImages = combination
+    ? [...new Set(Object.values(combination.values).flatMap((option) => product.variations?.images[option] ?? []))]
+    : [];
 
   const specs = [
     product.brand && { label: "Brand", value: product.brand },
@@ -72,7 +70,7 @@ export default function ProductPreviewPage() {
           count={product.galleryCount}
           title={product.title}
           images={product.images}
-          overrideImage={variationImage}
+          variationImages={variationImages}
         />
 
         <div>

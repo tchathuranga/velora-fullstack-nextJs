@@ -139,7 +139,7 @@ export default function SellerOrderDetailPage() {
               <td className="py-2 text-right text-slate-800">{formatCurrency(shipping)}</td>
             </tr>
             <tr>
-              <td className="py-2 text-slate-700">Website fee (3%)</td>
+              <td className="py-2 text-slate-700">Won fee (3%)</td>
               <td className="py-2 text-right text-slate-800">− {formatCurrency(fee)}</td>
             </tr>
             <tr>
@@ -149,7 +149,7 @@ export default function SellerOrderDetailPage() {
           </tbody>
         </table>
         <p className="mt-3 text-xs text-[var(--color-muted)]">
-          Website fee = (item price + shipping cost) × 3%. Actual earnings = item price + shipping cost − website fee.
+          Won fee = (item price + shipping cost) × 3%. Actual earnings = item price + shipping cost − won fee.
         </p>
       </section>
     </div>

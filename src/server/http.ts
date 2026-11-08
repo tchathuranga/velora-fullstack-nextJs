@@ -55,5 +55,14 @@ export function isUniqueViolation(err: unknown, constraint?: string): boolean {
   return e?.code === "23505" && (!constraint || e.constraint === constraint);
 }
 
+/**
+ * A row is still referenced (or references something missing): Postgres reports 23503 (foreign_key_violation) for plain
+ * foreign keys and 23001 (restrict_violation) when an ON DELETE RESTRICT key blocks the delete.
+ */
+export function isForeignKeyViolation(err: unknown): boolean {
+  const code = (err as { code?: string })?.code;
+  return code === "23503" || code === "23001";
+}
+
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (value: string) => UUID_RE.test(value);

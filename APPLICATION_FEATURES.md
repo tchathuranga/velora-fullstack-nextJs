@@ -523,7 +523,7 @@ A full-stack Next.js e-commerce marketplace platform with buyer, seller, and adm
   - RecentlyViewedContext for browsing history
 
 ### Data Management
-- PostgreSQL database (schema in `db/schema.sql`), accessed through Next.js route handlers under `/api`
+- PostgreSQL database (schema managed by migrations in `migrations/`, see `docs/DATABASE.md`), accessed through Next.js route handlers under `/api`
   - `users` / `user_addresses` - Accounts (buyer, admin) and saved delivery addresses
   - `stores` - Seller stores (a seller is a user who owns an approved store)
   - `categories` / `subcategories` / `banners` - Admin-managed catalog structure and homepage slider

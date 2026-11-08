@@ -9,9 +9,11 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",
+    "db:reset": "node --env-file=.env.local scripts/reset-db.mjs",
     "db:seed-admin": "node --env-file=.env.local scripts/seed-admin.mjs",
-    "db:seed-demo": "node --env-file=.env.local scripts/seed-demo.mjs"
+    "db:seed-demo": "node --env-file=.env.local scripts/seed-demo.mjs",
+    "db:test-data": "node --env-file=.env.local scripts/seed-test-data.mjs",
+    "db:bank-details": "node --env-file=.env.local scripts/bank-details.mjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.12.0",

@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { SellerTransaction } from "@/types";
-import { calcTransactionFee, calcNetSale, formatCurrency, formatDate, formatTime } from "@/lib/utils";
+import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
 export function SellerPaymentsTable({
   transactions,
@@ -51,12 +51,12 @@ export function SellerPaymentsTable({
                 </button>
               </td>
               <td className="px-4 py-3 text-slate-700">{formatCurrency(tx.amount)}</td>
-              <td className="px-4 py-3 text-slate-700">{formatCurrency(calcTransactionFee(tx.amount))}</td>
+              <td className="px-4 py-3 text-slate-700">{formatCurrency(tx.feeAmount)}</td>
               <td className="px-4 py-3 text-slate-700">
-                {tx.paymentMethod === "bank_transfer" ? formatCurrency(calcNetSale(tx.amount)) : "—"}
+                {tx.paymentMethod === "bank_transfer" ? formatCurrency(tx.amount - tx.feeAmount) : "—"}
               </td>
               <td className="px-4 py-3 text-slate-700">
-                {tx.paymentMethod === "cod" ? formatCurrency(calcNetSale(tx.amount)) : "—"}
+                {tx.paymentMethod === "cod" ? formatCurrency(tx.amount - tx.feeAmount) : "—"}
               </td>
             </tr>
           ))}
