@@ -820,3 +820,6 @@ ALTER TABLE stores ADD COLUMN bank_details_enc          text;
 ALTER TABLE stores ADD COLUMN bank_details_optional_enc text;
 ALTER TABLE stores ADD CONSTRAINT stores_bank_details_present CHECK (bank_details IS NOT NULL OR bank_details_enc IS NOT NULL);
 
+
+-- ── 4. admin-uploaded category photo (falls back to the built-in themed photo when null) ───────────────────────────────
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_url text;

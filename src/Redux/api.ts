@@ -233,8 +233,8 @@ export const api = createApi({
       query: (body) => ({ url: "/admin/categories", method: "POST", body }),
       invalidatesTags: ["Categories"],
     }),
-    renameCategory: build.mutation<void, { id: string; name: string }>({
-      query: ({ id, name }) => ({ url: `/admin/categories/${id}`, method: "PATCH", body: { name } }),
+    renameCategory: build.mutation<void, { id: string; name?: string; imageUrl?: string | null }>({
+      query: ({ id, ...body }) => ({ url: `/admin/categories/${id}`, method: "PATCH", body }),
       invalidatesTags: ["Categories"],
     }),
     deleteCategory: build.mutation<void, string>({

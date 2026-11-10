@@ -1,6 +1,6 @@
 import { fileToDataUrl } from "@/lib/image";
 
-export type UploadKind = "avatar" | "cover" | "store-avatar" | "store-cover" | "product" | "message";
+export type UploadKind = "avatar" | "cover" | "store-avatar" | "store-cover" | "product" | "message" | "category";
 
 /** Longest side, in px, each kind of image is downscaled to before upload. */
 const MAX_DIMENSION: Record<UploadKind, number> = {
@@ -10,6 +10,7 @@ const MAX_DIMENSION: Record<UploadKind, number> = {
   "store-cover": 1600,
   product: 1400,
   message: 1400,
+  category: 1000,
 };
 
 /** Downscales the file, then uploads it straight to Cloudinary with a server-issued signature. Returns the hosted URL. */

@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
 import { useCategories } from "@/context/CategoriesContext";
 import { getErrorMessage } from "@/Redux/api";
 import { CategoryList } from "@/components/admin/CategoryList";
 import { CategoryDetailsPanel } from "@/components/admin/CategoryDetailsPanel";
-import { Button } from "@/components/ui/Button";
+import { AddItemForm } from "@/components/admin/AddItemForm";
 import { PageLoader } from "@/components/ui/PageLoader";
 
 export default function AdminCategoriesPage() {
@@ -15,13 +14,13 @@ export default function AdminCategoriesPage() {
     loading,
     addCategory,
     updateCategory,
+    setCategoryImage,
     deleteCategory,
     addSubcategory,
     updateSubcategory,
     deleteSubcategory,
   } = useCategories();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [newCategoryName, setNewCategoryName] = useState("");
   const [error, setError] = useState("");
 
   // Admin mutations are async; surface a failure (e.g. a duplicate name) instead of dropping it.
@@ -45,27 +44,7 @@ export default function AdminCategoriesPage() {
 
       <div className="card mt-6 grid grid-cols-1 sm:grid-cols-[18rem_1fr]">
         <div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const trimmed = newCategoryName.trim();
-              if (!trimmed) return;
-              run(addCategory(trimmed));
-              setNewCategoryName("");
-            }}
-            className="flex gap-2 border-b border-[var(--color-border)] p-3"
-          >
-            <input
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder="New category name"
-              className="input-base flex-1"
-            />
-            <Button type="submit" size="sm">
-              <Plus size={14} />
-              Add
-            </Button>
-          </form>
+          <AddItemForm placeholder="New category name" onAdd={addCategory} />
           <CategoryList categories={categories} activeId={activeCategory?.id ?? null} onSelect={setActiveId} />
         </div>
 
@@ -74,6 +53,8 @@ export default function AdminCategoriesPage() {
             <CategoryDetailsPanel
               category={activeCategory}
               onRename={(name) => run(updateCategory(activeCategory.id, name))}
+              onImageChange={(url) => run(setCategoryImage(activeCategory.id, url))}
+              onImageError={setError}
               onDelete={() => {
                 run(deleteCategory(activeCategory.id));
                 setActiveId(null);

@@ -1,18 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
 import { useBanners } from "@/context/BannersContext";
 import { getErrorMessage } from "@/Redux/api";
 import { BannerList } from "@/components/admin/BannerList";
 import { BannerDetailsPanel } from "@/components/admin/BannerDetailsPanel";
-import { Button } from "@/components/ui/Button";
+import { AddItemForm } from "@/components/admin/AddItemForm";
 import { PageLoader } from "@/components/ui/PageLoader";
 
 export default function AdminBannersPage() {
   const { banners, loading, addBanner, updateBanner, updateBannerImage, deleteBanner, moveBanner } = useBanners();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [newBannerTitle, setNewBannerTitle] = useState("");
   const [error, setError] = useState("");
 
   // Admin mutations are async; surface a failure (e.g. a duplicate name) instead of dropping it.
@@ -36,27 +34,7 @@ export default function AdminBannersPage() {
 
       <div className="card mt-6 grid grid-cols-1 sm:grid-cols-[18rem_1fr]">
         <div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const trimmed = newBannerTitle.trim();
-              if (!trimmed) return;
-              run(addBanner(trimmed));
-              setNewBannerTitle("");
-            }}
-            className="flex gap-2 border-b border-[var(--color-border)] p-3"
-          >
-            <input
-              value={newBannerTitle}
-              onChange={(e) => setNewBannerTitle(e.target.value)}
-              placeholder="New banner title"
-              className="input-base flex-1"
-            />
-            <Button type="submit" size="sm">
-              <Plus size={14} />
-              Add
-            </Button>
-          </form>
+          <AddItemForm placeholder="New banner title" onAdd={addBanner} />
           <BannerList banners={banners} activeId={activeBanner?.id ?? null} onSelect={setActiveId} onMove={(id, direction) => run(moveBanner(id, direction))} />
         </div>
 
