@@ -67,6 +67,9 @@ export const storeStatusSchema = z.object({ status: z.enum(["active", "rejected"
 export const buyerStatusSchema = z.object({ status: z.enum(["active", "limited"]) });
 
 export const nameSchema = z.object({ name: required("Name", 100) });
+export const categoryUpdateSchema = z
+  .object({ name: required("Name", 100).optional(), imageUrl: imageUrl.nullable().optional() })
+  .refine((v) => v.name !== undefined || v.imageUrl !== undefined, "Nothing to update.");
 
 export const bannerCreateSchema = z.object({ title: required("Title", 150) });
 export const bannerUpdateSchema = z.object({
@@ -77,7 +80,7 @@ export const bannerUpdateSchema = z.object({
 export const bannerMoveSchema = z.object({ direction: z.enum(["up", "down"]) });
 
 export const uploadSignSchema = z.object({
-  kind: z.enum(["avatar", "cover", "store-avatar", "store-cover", "product", "message"]),
+  kind: z.enum(["avatar", "cover", "store-avatar", "store-cover", "product", "message", "category"]),
 });
 export const profileImagesSchema = z.object({
   avatarUrl: imageUrl.nullable().optional(),

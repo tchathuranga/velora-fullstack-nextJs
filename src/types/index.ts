@@ -67,6 +67,8 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  /** Admin-uploaded photo; when absent the storefront uses a built-in themed photo. */
+  imageUrl?: string;
   subcategories: Subcategory[];
 }
 

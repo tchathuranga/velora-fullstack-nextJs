@@ -18,6 +18,8 @@ interface CategoriesContextValue {
   /** Mutations are admin-only and reject with the API error. */
   addCategory: (name: string) => Promise<void>;
   updateCategory: (id: string, name: string) => Promise<void>;
+  /** Sets (or, with null, removes) the category's photo. */
+  setCategoryImage: (id: string, imageUrl: string | null) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   addSubcategory: (categoryId: string, name: string) => Promise<void>;
   updateSubcategory: (categoryId: string, subcategoryId: string, name: string) => Promise<void>;
@@ -42,6 +44,7 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
       loading: isLoading,
       addCategory: async (name) => void (await addCategory({ name }).unwrap()),
       updateCategory: async (id, name) => void (await renameCategory({ id, name }).unwrap()),
+      setCategoryImage: async (id, imageUrl) => void (await renameCategory({ id, imageUrl }).unwrap()),
       deleteCategory: async (id) => void (await deleteCategory(id).unwrap()),
       addSubcategory: async (categoryId, name) => void (await addSubcategory({ categoryId, name }).unwrap()),
       updateSubcategory: async (categoryId, subcategoryId, name) =>

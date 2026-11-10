@@ -105,11 +105,12 @@ export interface CategoryRow {
   id: string;
   name: string;
   slug: string;
+  image_url: string | null;
   subcategories: { id: string; name: string; slug: string }[];
 }
 
 export const CATEGORY_SELECT = `
-  c.id, c.name, c.slug,
+  c.id, c.name, c.slug, c.image_url,
   COALESCE((SELECT json_agg(json_build_object('id', sc.id, 'name', sc.name, 'slug', sc.slug) ORDER BY sc.position, sc.name)
               FROM subcategories sc WHERE sc.category_id = c.id), '[]'::json) AS subcategories`;
 
@@ -117,6 +118,7 @@ export const toCategory = (row: CategoryRow): Category => ({
   id: row.id,
   name: row.name,
   slug: row.slug,
+  ...(row.image_url ? { imageUrl: row.image_url } : {}),
   subcategories: row.subcategories,
 });
 
