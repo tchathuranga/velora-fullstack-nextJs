@@ -73,7 +73,7 @@ export const categoryUpdateSchema = z
 
 export const bannerCreateSchema = z.object({ title: required("Title", 150) });
 export const bannerUpdateSchema = z.object({
-  title: required("Title", 150).optional(),
+  title: text(150).optional(),
   subtitle: text(300).optional(),
   imageUrl: z.string().max(4_000_000).nullable().optional(),
 });

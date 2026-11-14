@@ -38,18 +38,13 @@ export function ImageBannerSlider() {
         style={{ transform: `translateX(-${safeIndex * 100}%)` }}
       >
         {banners.map((banner) => (
-          // Phones show a banner photo at its natural ratio so nothing is cropped; from `sm` up it fills a wide 19:5 strip.
-          <div
-            key={banner.id}
-            className={`relative w-full shrink-0 overflow-hidden sm:aspect-[19/5] ${banner.imageUrl ? "" : "aspect-[19/5]"}`}
-          >
+          // Phones use a fixed 16:9 frame and fill it with the photo (cropped to cover, no gaps); from `sm` up it fills a wide 19:5 strip.
+          <div key={banner.id} className="relative aspect-[16/9] w-full shrink-0 overflow-hidden sm:aspect-[19/5]">
             <PlaceholderImage
               seed={banner.id}
               image={banner.imageUrl}
               label={banner.title}
-              className={
-                banner.imageUrl ? "block h-auto w-full sm:absolute sm:inset-0 sm:h-full" : "absolute inset-0 h-full w-full"
-              }
+              className="absolute inset-0 h-full w-full"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 hidden px-8 pb-8 text-white sm:block">
